@@ -13,9 +13,10 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CotcMcpAgent"] }],
   // This connector's own OAuth token store (title: charlotteonthecheap-connector-oauth).
   // Kept separate from every other connector's OAUTH_KV so their OAuth grants never
-  // cross-wire. Create it before the first deploy and paste the id here:
-  //   wrangler kv namespace create charlotteonthecheap-connector-oauth
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "PLACEHOLDER_RUN_KV_NAMESPACE_CREATE" }],
+  // cross-wire. To stand up a deployment in a different Cloudflare account, create
+  // your own (wrangler kv namespace create charlotteonthecheap-connector-oauth) and
+  // replace this id.
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "a230427308a84901832c3938008e8582" }],
   // Production custom domain. The zone must be in the deploying account's
   // Cloudflare; wrangler provisions the hostname on deploy. Remove this route
   // to deploy to *.workers.dev only.
