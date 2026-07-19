@@ -1,6 +1,6 @@
 {
   "name": "charlotteonthecheap-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "mcpName": "io.github.chrischall/charlotteonthecheap-mcp",
   "description": "Charlotte On The Cheap MCP server for Claude — developed and maintained by AI (Claude Code)",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
