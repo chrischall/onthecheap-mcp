@@ -85,7 +85,13 @@ export class CotcClient {
       readEnvVar('COTC_BASE_URL') ??
       DEFAULT_BASE_URL
     ).replace(/\/+$/, '');
-    this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+    // Call the global fetch as a method of globalThis, never as a detached
+    // reference. Node tolerates `const f = globalThis.fetch; f(url)`, but the
+    // Cloudflare Workers runtime (workerd) throws "Illegal invocation:
+    // function called with incorrect `this` reference" — so the hosted
+    // connector's every request would fail. The wrapper keeps `this` bound to
+    // globalThis and still picks up a test spy installed on globalThis.fetch.
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
   }
 
   private get headers(): Record<string, string> {
