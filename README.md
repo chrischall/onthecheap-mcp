@@ -56,6 +56,17 @@ at most four listings per day. `cotc_events_month_overview` reports each day's
 *true* total alongside the preview — call `cotc_list_events` with a date for the
 complete schedule.
 
+## Hosted connector (optional)
+
+The same tools can run as a Cloudflare Worker, making them reachable from
+claude.ai on the web, desktop and mobile rather than only from a machine with
+this package installed. Because the site is public, connecting asks for
+nothing — the login page is a single "Authorize" button and no credentials are
+stored.
+
+It's a manual deploy into your own Cloudflare account: see
+[`docs/DEPLOY-CONNECTOR.md`](docs/DEPLOY-CONNECTOR.md).
+
 ## Configuration
 
 | Env var | Purpose |
