@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
 import worker from '../src/worker.js';
+import { CotcClient } from '../src/client.js';
 
 // Runs inside the real Workers runtime (Miniflare) against wrangler.jsonc's
 // bindings. Covers what the node suite structurally cannot: that the Worker
@@ -71,6 +72,21 @@ describe('zero-auth login page', () => {
     // It must still be a usable form, or the grant can never complete.
     expect(html).toMatch(/<button[^>]*type="submit"/);
     expect(html).toContain('name="oauthReq"');
+  });
+});
+
+describe('CotcClient under the Workers runtime', () => {
+  it('does not detach global fetch from its this-binding', async () => {
+    // Regression guard for the "Illegal invocation" bug: storing
+    // `globalThis.fetch` in a property and calling it detached throws in
+    // workerd (but not in Node), so this can only be caught in the Workers
+    // pool. The client's login-time reachability check is the exact path that
+    // failed. We can't assert the site is reachable from CI, but the binding
+    // error must never be the reason.
+    const health = await new CotcClient().healthcheck();
+    if (!health.ok) {
+      expect(health.error ?? '').not.toMatch(/illegal invocation/i);
+    }
   });
 });
 

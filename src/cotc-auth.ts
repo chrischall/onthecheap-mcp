@@ -48,8 +48,10 @@ export const cotcAuth: ConnectorAuth<CotcProps> = {
     const baseUrl = (env?.COTC_BASE_URL as string | undefined) || DEFAULT_BASE_URL;
     const health = await new CotcClient({ baseUrl }).healthcheck();
     if (!health.ok) {
+      // Surface the underlying reason: a bare "site may be down" hides an
+      // upstream block or a config problem, which look identical to the user.
       throw new Error(
-        `Could not reach Charlotte On The Cheap (${baseUrl}). The site may be temporarily down — try again shortly.`,
+        `Could not reach Charlotte On The Cheap (${baseUrl}): ${health.error ?? 'unknown error'}`,
       );
     }
     return { baseUrl };
