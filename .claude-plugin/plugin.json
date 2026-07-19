@@ -1,13 +1,22 @@
 {
   "name": "charlotteonthecheap-mcp",
   "displayName": "Charlotte On The Cheap",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "MCP server for Charlotte On The Cheap — free and cheap Charlotte events, deals and local guides",
-  "author": { "name": "Chris Hall", "email": "chris.c.hall@gmail.com" },
+  "author": {
+    "name": "Chris Hall",
+    "email": "chris.c.hall@gmail.com"
+  },
   "homepage": "https://github.com/chrischall/charlotteonthecheap-mcp",
   "repository": "https://github.com/chrischall/charlotteonthecheap-mcp",
   "license": "MIT",
-  "keywords": ["charlotte", "events", "local-events", "deals", "mcp"],
+  "keywords": [
+    "charlotte",
+    "events",
+    "local-events",
+    "deals",
+    "mcp"
+  ],
   "skills": "./skills/",
   "mcp": "./.mcp.json"
 }
