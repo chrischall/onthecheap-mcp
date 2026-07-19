@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chrischall/charlotteonthecheap-mcp",
+  "description": "Charlotte On The Cheap MCP — free and cheap Charlotte events, deals and local guides",
+  "repository": {
+    "url": "https://github.com/chrischall/charlotteonthecheap-mcp",
+    "source": "github"
+  },
+  "version": "0.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "charlotteonthecheap-mcp",
+      "version": "0.0.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "COTC_BASE_URL",
+          "description": "Optional override for the Charlotte On The Cheap base URL. The site is public; no credentials are required.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

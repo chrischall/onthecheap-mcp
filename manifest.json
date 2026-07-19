@@ -1,0 +1,53 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/dxt/main/dist/mcpb-manifest.schema.json",
+  "manifest_version": "0.3",
+  "name": "charlotteonthecheap-mcp",
+  "display_name": "Charlotte On The Cheap",
+  "version": "0.0.0",
+  "description": "Find free and cheap things to do in Charlotte — daily event listings, deals, and local guides from Charlotte On The Cheap",
+  "author": {
+    "name": "Chris Chall",
+    "email": "chris.c.hall@gmail.com",
+    "url": "https://github.com/chrischall"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chrischall/charlotteonthecheap-mcp"
+  },
+  "homepage": "https://github.com/chrischall/charlotteonthecheap-mcp",
+  "support": "https://github.com/chrischall/charlotteonthecheap-mcp/issues",
+  "license": "MIT",
+  "keywords": ["charlotte", "events", "local-events", "free-events", "deals"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/bundle.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/bundle.js"],
+      "env": {
+        "COTC_BASE_URL": "${user_config.cotc_base_url}"
+      }
+    }
+  },
+  "user_config": {
+    "cotc_base_url": {
+      "type": "string",
+      "title": "Site base URL (optional)",
+      "description": "Override the Charlotte On The Cheap base URL. Leave blank to use the default. The site is public — no credentials are needed.",
+      "required": false
+    }
+  },
+  "tools": [
+    { "name": "cotc_list_events", "description": "List Charlotte events for a given day, with time, price and venue" },
+    { "name": "cotc_events_month_overview", "description": "Day-by-day overview of a month's events with true per-day counts" },
+    { "name": "cotc_search_posts", "description": "Search articles by text, category, location and date range" },
+    { "name": "cotc_get_post", "description": "Fetch one article in full as readable text or HTML" },
+    { "name": "cotc_list_categories", "description": "List article categories with ids and post counts" },
+    { "name": "cotc_list_locations", "description": "List Charlotte-area locations with ids and post counts" },
+    { "name": "cotc_healthcheck", "description": "Verify the site is reachable" }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "node": ">=22.5" }
+  }
+}
