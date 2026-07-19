@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/chrischall/charlotteonthecheap-mcp/compare/v0.1.0...v0.1.1) (2026-07-19)
+
+
+### Bug Fixes
+
+* bind global fetch so the hosted connector can reach the site ([#7](https://github.com/chrischall/charlotteonthecheap-mcp/issues/7)) ([07160ff](https://github.com/chrischall/charlotteonthecheap-mcp/commit/07160ff82457eecf7fbd899769b8ad342b6359be))
+
 ## 0.1.0 (2026-07-19)
 
 

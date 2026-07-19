@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "MCP server for Charlotte On The Cheap — free and cheap Charlotte events, deals and local guides",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       "displayName": "Charlotte On The Cheap",
       "source": "./",
       "description": "MCP server for Charlotte On The Cheap — daily Charlotte event listings with times, prices and venues, plus searchable deals and local guides",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Chris Hall"
       },
