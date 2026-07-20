@@ -10,8 +10,13 @@ there is no `OTC_SITE` var and nothing to configure per city — a single
 deployment reaches all of them. (Earlier versions pinned one city per Worker;
 if you deployed several, they are now redundant and can be torn down.)
 
-Deploy is **manual, in the operator's own Cloudflare account** — there is no CI
-deploy for connectors.
+**Releases deploy automatically.** The `deploy-connector` job in
+`release-please.yml` deploys the newly tagged ref through the shared
+`chrischall/workflows` reusable workflow, using the repo's
+`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` secrets. Any ref can also be
+deployed on demand from **Actions → deploy-connector → Run workflow**. The
+manual `npm run worker:deploy` below stays available for local iteration and is
+what you need for the one-time setup in your own Cloudflare account.
 
 ## What makes this one unusual
 

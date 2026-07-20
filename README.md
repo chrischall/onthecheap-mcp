@@ -109,7 +109,11 @@ this package installed. Because the sites are public, connecting asks for
 nothing — the login page is a single "Authorize" button and no credentials are
 stored. One Worker serves one city.
 
-It's a manual deploy into your own Cloudflare account: see
+Releases deploy it automatically — the `deploy-connector` job in
+`release-please.yml` ships the tagged ref via the shared `chrischall/workflows`
+reusable workflow. Any ref can also be deployed on demand from
+**Actions → deploy-connector → Run workflow**. First-time setup for your own
+Cloudflare account: see
 [`docs/DEPLOY-CONNECTOR.md`](docs/DEPLOY-CONNECTOR.md).
 
 ## Development
