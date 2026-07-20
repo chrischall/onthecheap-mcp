@@ -1,0 +1,14 @@
+{
+  // Typecheck-only config covering src/worker.ts, which the stdio tsconfig
+  // deliberately excludes so `tsc` never emits dist/worker.js. Without this the
+  // Worker entry point has no automated typecheck at all, and a regression in
+  // it surfaces only at a manual `wrangler deploy`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // The Worker graph pulls in cloudflare:workers via @chrischall/mcp-connector.
+    "types": ["node", "@cloudflare/workers-types"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -78,17 +78,21 @@ describe('zero-auth login page', () => {
 });
 
 describe('OtcClient under the Workers runtime', () => {
-  it('does not detach global fetch from its this-binding', async () => {
-    // Regression guard for the "Illegal invocation" bug: storing
-    // `globalThis.fetch` in a property and calling it detached throws in
-    // workerd (but not in Node), so this can only be caught in the Workers
-    // pool. The client's login-time reachability check is the exact path that
-    // failed. We can't assert the site is reachable from CI, but the binding
-    // error must never be the reason.
+  it('constructs and runs a request path without throwing', async () => {
+    // A smoke test only — NOT a guard for the "Illegal invocation" bug.
+    //
+    // This pool does not enforce workerd's rule that `fetch` be invoked with
+    // globalThis as its receiver: reintroducing the detached
+    // `globalThis.fetch` here still returns ok:true, so a behavioural
+    // assertion in this pool would pass with the bug present and give false
+    // confidence. Only `wrangler dev` or a real deploy reproduces it.
+    //
+    // The actual guard is structural and lives in the node suite
+    // ("invokes the global fetch with globalThis as its receiver"), which
+    // observes the receiver directly and does fail when the bug returns.
     const health = await new OtcClient().healthcheck();
-    if (!health.ok) {
-      expect(health.error ?? '').not.toMatch(/illegal invocation/i);
-    }
+    expect(typeof health.ok).toBe('boolean');
+    expect(health.baseUrl).toMatch(/^https:\/\//);
   });
 });
 

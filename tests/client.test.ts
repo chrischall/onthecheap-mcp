@@ -218,3 +218,32 @@ describe('healthcheck', () => {
     expect(health.error).toMatch(/ECONNREFUSED/);
   });
 });
+
+describe('global fetch binding', () => {
+  it('invokes the global fetch with globalThis as its receiver', async () => {
+    // workerd throws "Illegal invocation: function called with incorrect
+    // `this` reference" unless fetch is called with globalThis as its
+    // receiver, which broke every request from the deployed connector.
+    //
+    // Neither Node NOR the Workers test pool enforces that rule — a detached
+    // `globalThis.fetch` resolves fine in both (verified: the pool returns
+    // ok:true with the bug present), so a behavioural test cannot catch it.
+    // Assert the receiver directly instead: the buggy form
+    // (`this.fetchImpl = globalThis.fetch`) invokes with the client instance
+    // as receiver, the correct form with globalThis.
+    let receiver: unknown = '<fetch never called>';
+    const original = globalThis.fetch;
+    globalThis.fetch = function (this: unknown) {
+      receiver = this;
+      return Promise.resolve(
+        new Response('{}', { headers: { 'content-type': 'application/json' } }),
+      );
+    } as unknown as typeof fetch;
+    try {
+      await new OtcClient().healthcheck();
+    } finally {
+      globalThis.fetch = original;
+    }
+    expect(receiver).toBe(globalThis);
+  });
+});
