@@ -11,8 +11,9 @@ this repo uses no browser bridge.
 "On the Cheap" is ~14 sister sites on one platform (see `src/sites.ts`). Every
 one answers the same WordPress REST API, carries an `expired` category and a
 `locations` taxonomy, and — except the national hub, livingonthecheap.com —
-serves the same `lotc` events calendar. One server reads one site, chosen with
-`OTC_SITE` (or `OTC_BASE_URL`).
+serves the same `lotc` events calendar. One server reads them all: the site is a
+required `site` argument on every tool, and `OtcRegistry` keeps one `OtcClient`
+per city so each site's resolved term ids stay cached.
 
 **Term ids are per-install and must never be hardcoded.** The `expired`
 category alone spans `2, 3, 4, 379, 840, 1140, 4483, 4601, 5908, 6193, 7803,

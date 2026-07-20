@@ -28,11 +28,6 @@
   "observability": {
     "enabled": true
   },
-  // nodejs_compat populates process.env from `vars`, so the client's
-  // readEnvVar() calls work unchanged in the Worker. OTC_SITE selects which
-  // city this deployment serves; deploy a second Worker with a different key
-  // (and its own name / route / KV namespace) to serve another city.
-  "vars": {
-    "OTC_SITE": "charlotte"
-  }
+  // No OTC_SITE: this Worker serves the WHOLE network. Every tool takes a
+  // `site` argument, so a var pinning one city would do nothing but mislead.
 }

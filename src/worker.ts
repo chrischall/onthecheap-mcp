@@ -1,5 +1,5 @@
 import { createConnector } from '@chrischall/mcp-connector';
-import { OtcClient } from './client.js';
+import { OtcRegistry } from './registry.js';
 import { otcAuth, type OtcProps } from './otc-auth.js';
 import { VERSION } from './version.js';
 import { registerPostTools } from './tools/posts.js';
@@ -19,17 +19,20 @@ import { registerTaxonomyTools, registerUtilityTools } from './tools/taxonomy.js
 // per-session MCP agent, so none of ofw-connector's cache plumbing applies.
 //
 // ZERO-AUTH — `otcAuth` declares `fields: []`, so there is no credential to
-// collect and no per-user client state; `buildClient` just points a client at
-// the site. The client is constructed per grant here rather than reusing the
-// stdio singleton, keeping module scope free of construction side effects.
+// collect and no per-user client state; `buildClient` just builds a registry.
+// It is constructed per grant here rather than reusing the stdio singleton,
+// keeping module scope free of construction side effects.
 //
-// Which site a deployment reads comes from wrangler.jsonc's OTC_SITE /
-// OTC_BASE_URL vars, resolved in `otc-auth.ts` and carried in the grant props.
-const { Agent, handler } = createConnector<OtcProps, OtcClient>({
+// GLOBAL — one deployment serves the WHOLE network. Which city a call reads
+// comes from that call's `site` argument, so there is no OTC_SITE var and no
+// site recorded in the grant props. The registry keeps one client per city it
+// has been asked for, which is what preserves each site's cached `expired`
+// category id across calls within a session.
+const { Agent, handler } = createConnector<OtcProps, OtcRegistry>({
   name: 'onthecheap-mcp',
   version: VERSION,
   auth: otcAuth,
-  buildClient: (props) => new OtcClient({ baseUrl: props.baseUrl }),
+  buildClient: () => new OtcRegistry(),
   tools: [registerPostTools, registerEventTools, registerTaxonomyTools, registerUtilityTools],
 });
 

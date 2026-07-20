@@ -2,7 +2,7 @@ import { McpToolError } from '@chrischall/mcp-utils';
 
 /** One site in the "on the Cheap" network. */
 export interface OtcSite {
-  /** Stable selector used by `OTC_SITE` and the site tools, e.g. "denver". */
+  /** Stable selector passed as every tool's `site` argument, e.g. "denver". */
   key: string;
   /** The site's own brand name. */
   name: string;
@@ -48,7 +48,27 @@ export const SITES: readonly OtcSite[] = [
   { key: 'national', name: 'Living On The Cheap', area: 'the United States', baseUrl: 'https://livingonthecheap.com', national: true },
 ];
 
+/**
+ * The default only survives as a documentation example and a test fixture.
+ * It is deliberately NOT a fallback for a missing `site` argument — every
+ * site-scoped tool requires one, so that a question about Denver can never be
+ * answered with Charlotte's data.
+ */
 export const DEFAULT_SITE_KEY = 'charlotte';
+
+/**
+ * The shared description for every tool's `site` argument.
+ *
+ * Written once and reused so the tools cannot drift into describing the same
+ * argument differently, and so the full key list is in front of the model at
+ * call time — otherwise selecting a city costs an extra otc_list_sites round
+ * trip before every single read.
+ */
+export const SITE_ARG_DESCRIPTION =
+  'Which "on the Cheap" city to read. Required — there is no default site. One of: ' +
+  `${SITES.map((s) => s.key).join(', ')}. ` +
+  'Common aliases also work (milehigh, raleigh, rva, southflorida, kc, …). ' +
+  'Use otc_list_sites for the full list with the area each one covers.';
 
 /** Aliases people actually say, mapped to a site key. */
 const ALIASES: Record<string, string> = {
@@ -85,13 +105,34 @@ export function findSite(keyOrAlias: string): OtcSite | undefined {
 export function requireSite(keyOrAlias: string): OtcSite {
   const site = findSite(keyOrAlias);
   if (!site) {
-    // The valid keys go in the MESSAGE, not just the hint: this can throw
-    // during client construction (a misconfigured OTC_SITE), where nothing
-    // renders the hint.
+    // The valid keys go in the MESSAGE, not just the hint: this can throw from
+    // a bare OtcClient construction, where nothing renders the hint.
     const valid = SITES.map((s) => s.key).join(', ');
     throw new McpToolError(`Unknown site "${keyOrAlias}". Valid sites: ${valid}.`, {
-      hint: 'Set OTC_SITE to one of the listed keys, or OTC_BASE_URL to a site URL.',
+      hint: 'Pass one of the listed keys as the `site` argument. otc_list_sites shows each one with the area it covers.',
     });
+  }
+  return site;
+}
+
+/**
+ * Resolves a site that is expected to have a local events calendar.
+ *
+ * The national hub does not. Its `/events/` pages still answer 200, but carry a
+ * single evergreen online offer repeated on every date — which is worse than an
+ * empty calendar, because it reads as a real listing. So the hub is refused
+ * here rather than queried.
+ *
+ * Gated in one place rather than at each call site so the stdio server and the
+ * Worker cannot drift apart on it.
+ */
+export function requireLocalSite(keyOrAlias: string): OtcSite {
+  const site = requireSite(keyOrAlias);
+  if (site.national) {
+    throw new McpToolError(
+      `${site.name} is the national deals hub and has no local events calendar.`,
+      { hint: 'Pass a city site instead — otc_list_sites lists them all.' },
+    );
   }
   return site;
 }

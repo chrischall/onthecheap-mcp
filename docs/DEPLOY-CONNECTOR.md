@@ -1,13 +1,14 @@
 # Deploying the hosted connector
 
-The connector makes an On the Cheap site reachable from **claude.ai** (web,
+The connector makes the On the Cheap network reachable from **claude.ai** (web,
 desktop, mobile) instead of only from Claude Code on a machine with this
 package installed. It is a Cloudflare Worker wrapping the same tool registrars
 the stdio server uses.
 
-**One Worker serves one city.** Which one comes from `OTC_SITE` in
-`wrangler.jsonc`'s `vars` (default `charlotte`). To serve a second city, deploy
-a second Worker with its own `name`, route and KV namespace.
+**One Worker serves the whole network.** Every tool takes a `site` argument, so
+there is no `OTC_SITE` var and nothing to configure per city — a single
+deployment reaches all of them. (Earlier versions pinned one city per Worker;
+if you deployed several, they are now redundant and can be torn down.)
 
 Deploy is **manual, in the operator's own Cloudflare account** — there is no CI
 deploy for connectors.
@@ -15,8 +16,9 @@ deploy for connectors.
 ## What makes this one unusual
 
 It is **zero-auth**. The On the Cheap sites are public, so the login
-page collects nothing: it renders a bare "Authorize" button, and connecting
-stores only which site to read. That requires `@chrischall/mcp-connector`
+page collects nothing: it renders a bare "Authorize" button, and the grant
+stores nothing at all — not even a site, since the site is a tool argument.
+That requires `@chrischall/mcp-connector`
 >= 1.1.0 — earlier versions crashed on an empty `fields` array.
 
 One consequence worth understanding: with no credentials there is no per-user

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
 import worker from '../src/worker.js';
 import { OtcClient } from '../src/client.js';
+import { OtcRegistry } from '../src/registry.js';
 
 // Runs inside the real Workers runtime (Miniflare) against wrangler.jsonc's
 // bindings. Covers what the node suite structurally cannot: that the Worker
@@ -77,7 +78,23 @@ describe('zero-auth login page', () => {
   });
 });
 
-describe('OtcClient under the Workers runtime', () => {
+describe('OtcRegistry under the Workers runtime', () => {
+  it('serves any site in the network, not one pinned city', async () => {
+    // What `buildClient` actually constructs. A deployment used to be pinned to
+    // one city by wrangler.jsonc's OTC_SITE; the registry must reach the others.
+    const registry = new OtcRegistry();
+    expect(registry.for('denver').site?.key).toBe('denver');
+    expect(registry.for('triangle').site?.key).toBe('triangle');
+  });
+
+  it('has no OTC_SITE binding to fall back on', () => {
+    // The guard against quietly re-pinning the deployment: if this var comes
+    // back, every tool still takes a `site` argument but the environment starts
+    // disagreeing with it.
+    expect((env as Record<string, unknown>).OTC_SITE).toBeUndefined();
+    expect((env as Record<string, unknown>).OTC_BASE_URL).toBeUndefined();
+  });
+
   it('constructs and runs a request path without throwing', async () => {
     // A smoke test only — NOT a guard for the "Illegal invocation" bug.
     //

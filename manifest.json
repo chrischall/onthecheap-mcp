@@ -31,26 +31,7 @@
       "command": "node",
       "args": [
         "${__dirname}/dist/bundle.js"
-      ],
-      "env": {
-        "OTC_SITE": "${user_config.otc_site}",
-        "OTC_BASE_URL": "${user_config.otc_base_url}"
-      }
-    }
-  },
-  "user_config": {
-    "otc_site": {
-      "type": "string",
-      "title": "City",
-      "description": "Which On the Cheap site to read: charlotte, denver, atlanta, chicago, columbus, seattle, kansascity, miami, orlando, portland, richmond, southernmaine, triangle, or national. Defaults to charlotte.",
-      "required": false,
-      "default": "charlotte"
-    },
-    "otc_base_url": {
-      "type": "string",
-      "title": "Site URL (advanced)",
-      "description": "Override with an explicit site URL instead of a city key. Leave blank unless you need a site not in the list. These sites are public — no credentials are needed.",
-      "required": false
+      ]
     }
   },
   "tools": [
@@ -84,7 +65,7 @@
     },
     {
       "name": "otc_healthcheck",
-      "description": "Verify the configured site is reachable"
+      "description": "Verify a given site is reachable"
     }
   ],
   "compatibility": {

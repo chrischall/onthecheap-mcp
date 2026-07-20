@@ -5,23 +5,32 @@ description: Find free and cheap things to do in a US city — daily event listi
 
 # On the Cheap
 
-Reads one site in the [On the Cheap](https://livingonthecheap.com) network —
-local guides to free and cheap things to do. Everything is read-only and needs
-no credentials.
+Reads the [On the Cheap](https://livingonthecheap.com) network — local guides to
+free and cheap things to do across ~14 US cities. Everything is read-only and
+needs no credentials.
 
-## Know which city you're reading
+## Always name the city
 
-**This server is configured for ONE city at a time.** Call `otc_healthcheck` (or
-`otc_list_sites`) if you're unsure which — every tool result also carries a
-`site` key. Don't assume Charlotte just because it's the default.
+**Every tool except `otc_list_sites` takes a required `site` argument, and there
+is no default.** Pick the key that matches the city the user means; if you're not
+sure one exists, call `otc_list_sites` first. Common aliases work (`milehigh`,
+`raleigh`, `rva`, `kc`, `southflorida`).
 
-If the user asks about a city this server isn't pointed at, say so plainly:
-switching is a configuration change (`OTC_SITE`), not something a tool argument
-can do. `otc_list_sites` shows the available keys.
+An unknown key is refused with the valid ones listed, so you'll never silently
+read the wrong city — but do check that the key you picked is the city the user
+actually asked about. Every result echoes back `site` and `site_name`.
+
+Because the whole network is reachable, you can answer across cities in one go —
+comparing a weekend in Denver and Portland is just two calls.
+
+**Category and location ids are per-site.** Each site is a separate WordPress
+install, so an id from `otc_list_categories` is only meaningful against that
+same `site`. Reusing one across cities filters to something unrelated rather
+than erroring.
 
 The `national` site (Living On The Cheap) covers US-wide deals and has **no
-local events calendar**, so the event tools aren't registered there at all — if
-they're missing, that's why. Use `otc_search_posts` for national deals.
+local events calendar**. The event tools reject it with an explanatory error;
+use `otc_search_posts` with `site: "national"` for national deals.
 
 ## Picking the right tool
 
@@ -33,8 +42,11 @@ they're missing, that's why. Use `otc_search_posts` for national deals.
   (`query`, `category`, `location`, `after`/`before`).
 - **Read one article in full** → `otc_get_post` with an id, slug, or URL.
 - **Discover filter ids** → `otc_list_categories`, `otc_list_locations`.
+- **Find which cities exist** → `otc_list_sites` (the only tool with no `site`).
 
 ## Typical flow
+
+Pass `site` on every one of these calls.
 
 For "what's free this weekend?", call `otc_list_events` once per date with
 `free_only: true` — the events calendar is per-day, so a weekend is two calls
@@ -42,8 +54,8 @@ For "what's free this weekend?", call `otc_list_events` once per date with
 `otc_get_post` on anything they want details for.
 
 For a topic ("free museum days", "kids stuff in Lake Norman"), search instead:
-resolve the category or location id first if you need to filter, then
-`otc_search_posts`.
+resolve the category or location id first if you need to filter — against the
+same `site` — then `otc_search_posts`.
 
 ## Two behaviours to get right
 

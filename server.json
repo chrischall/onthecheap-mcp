@@ -14,23 +14,7 @@
       "version": "0.2.0",
       "transport": {
         "type": "stdio"
-      },
-      "environmentVariables": [
-        {
-          "name": "OTC_SITE",
-          "description": "Which On the Cheap city to read (e.g. charlotte, denver, triangle). Defaults to charlotte.",
-          "isRequired": false,
-          "format": "string",
-          "isSecret": false
-        },
-        {
-          "name": "OTC_BASE_URL",
-          "description": "Explicit site URL, overriding OTC_SITE. The sites are public; no credentials are required.",
-          "isRequired": false,
-          "format": "string",
-          "isSecret": false
-        }
-      ]
+      }
     }
   ]
 }

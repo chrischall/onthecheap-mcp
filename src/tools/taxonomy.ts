@@ -1,33 +1,35 @@
+import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { textResult, toolAnnotations } from '@chrischall/mcp-utils';
-import type { OtcClient } from '../client.js';
+import type { OtcRegistry } from '../registry.js';
 import { decodeEntities } from '../normalize.js';
-import { SITES } from '../sites.js';
+import { SITES, SITE_ARG_DESCRIPTION, requireSite } from '../sites.js';
 
-export function registerTaxonomyTools(server: McpServer, client: OtcClient): void {
-  const site = client.site;
-  const label = site?.name ?? 'the configured On the Cheap site';
-  const area = site?.area ?? 'the site’s area';
+export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry): void {
+  const site = z.string().min(1).describe(SITE_ARG_DESCRIPTION);
 
   server.registerTool(
     'otc_list_categories',
     {
-      title: `List ${label} categories`,
+      title: 'List a city’s article categories',
       description:
-        `List ${label}'s article categories with their ids and post counts (kids, music, food, festivals, art, museums, and so on). ` +
-        'Use an id to filter otc_search_posts by topic. Read-only.',
+        'List one "on the Cheap" site\'s article categories with their ids and post counts (kids, music, food, festivals, art, museums, and so on). ' +
+        'Pass the `site` key for the city (see otc_list_sites). ' +
+        'Use an id to filter otc_search_posts by topic — ids are per-site, so use them only against the site they came from. Read-only.',
       annotations: toolAnnotations({
-        title: `List ${label} categories`,
+        title: 'List a city’s article categories',
         readOnly: true,
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {},
+      inputSchema: { site },
     },
-    async () => {
-      const terms = await client.listTerms('categories');
+    async ({ site: siteKey }) => {
+      const resolved = requireSite(siteKey);
+      const terms = await registry.for(resolved.key).listTerms('categories');
       return textResult({
-        site: site?.key,
+        site: resolved.key,
+        site_name: resolved.name,
         count: terms.length,
         categories: terms.map((t) => ({ ...t, name: decodeEntities(t.name) })),
       });
@@ -37,22 +39,25 @@ export function registerTaxonomyTools(server: McpServer, client: OtcClient): voi
   server.registerTool(
     'otc_list_locations',
     {
-      title: `List ${label} locations`,
+      title: 'List a city’s locations',
       description:
-        `List ${label}'s location taxonomy with ids and post counts — the neighbourhoods and surrounding areas of ${area}. ` +
-        'Use an id to filter otc_search_posts geographically. Read-only.',
+        'List one "on the Cheap" site\'s location taxonomy with ids and post counts — the neighbourhoods and surrounding areas it covers. ' +
+        'Pass the `site` key for the city (see otc_list_sites). ' +
+        'Use an id to filter otc_search_posts geographically — ids are per-site, so use them only against the site they came from. Read-only.',
       annotations: toolAnnotations({
-        title: `List ${label} locations`,
+        title: 'List a city’s locations',
         readOnly: true,
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {},
+      inputSchema: { site },
     },
-    async () => {
-      const terms = await client.listTerms('locations');
+    async ({ site: siteKey }) => {
+      const resolved = requireSite(siteKey);
+      const terms = await registry.for(resolved.key).listTerms('locations');
       return textResult({
-        site: site?.key,
+        site: resolved.key,
+        site_name: resolved.name,
         count: terms.length,
         locations: terms.map((t) => ({ ...t, name: decodeEntities(t.name) })),
       });
@@ -60,19 +65,15 @@ export function registerTaxonomyTools(server: McpServer, client: OtcClient): voi
   );
 }
 
-export function registerUtilityTools(server: McpServer, client: OtcClient): void {
-  const site = client.site;
-  const label = site?.name ?? 'the configured On the Cheap site';
-
+export function registerUtilityTools(server: McpServer, registry: OtcRegistry): void {
   server.registerTool(
     'otc_list_sites',
     {
       title: 'List the On the Cheap sites',
       description:
-        'List the cities in the "on the Cheap" network, with the key used to select each one. ' +
-        'This server reads ONE site at a time — the one it is configured for (see otc_healthcheck). ' +
-        'Switching sites is a configuration change (OTC_SITE), not a tool argument, so use this to tell the user ' +
-        'which cities exist and which one is active rather than to query another city. Read-only.',
+        'List every city in the "on the Cheap" network with the `site` key used to select it. ' +
+        'This server reads them all — every other tool takes a `site` argument, and there is no default, ' +
+        'so start here when you do not already know which key covers the city the user means. Read-only.',
       annotations: toolAnnotations({
         title: 'List the On the Cheap sites',
         readOnly: true,
@@ -83,16 +84,18 @@ export function registerUtilityTools(server: McpServer, client: OtcClient): void
     },
     async () =>
       textResult({
-        active_site: site?.key,
         count: SITES.length,
-        note: 'Set OTC_SITE to one of these keys to point the server at that city.',
+        note: 'Pass one of these keys as the `site` argument on any other tool.',
         sites: SITES.map((s) => ({
           key: s.key,
           name: s.name,
           area: s.area,
           url: s.baseUrl,
           ...(s.national
-            ? { national: true, note: 'National deals hub; no local events calendar.' }
+            ? {
+                national: true,
+                note: 'National deals hub; searchable, but has no local events calendar.',
+              }
             : {}),
         })),
       }),
@@ -101,18 +104,25 @@ export function registerUtilityTools(server: McpServer, client: OtcClient): void
   server.registerTool(
     'otc_healthcheck',
     {
-      title: `Check ${label} connectivity`,
+      title: 'Check an On the Cheap site’s connectivity',
       description:
-        `Verify the configured site (${label}) is reachable and its public API is responding, and report which ` +
-        'site this server is pointed at. The sites need no credentials, so this checks connectivity only. Read-only.',
+        'Verify one "on the Cheap" site is reachable and its public API is responding. ' +
+        'Pass the `site` key for the city (see otc_list_sites). ' +
+        'The sites need no credentials, so this checks connectivity only. Read-only.',
       annotations: toolAnnotations({
-        title: `Check ${label} connectivity`,
+        title: 'Check an On the Cheap site’s connectivity',
         readOnly: true,
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {},
+      inputSchema: { site: z.string().min(1).describe(SITE_ARG_DESCRIPTION) },
     },
-    async () => textResult(await client.healthcheck()),
+    async ({ site: siteKey }) => {
+      const resolved = requireSite(siteKey);
+      return textResult({
+        site_name: resolved.name,
+        ...(await registry.for(resolved.key).healthcheck()),
+      });
+    },
   );
 }
