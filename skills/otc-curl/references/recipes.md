@@ -3,9 +3,14 @@
 All verified live on 2026-07-19. Set once:
 
 ```bash
-BASE=https://www.charlotteonthecheap.com
-UA='charlotteonthecheap-skill (+https://github.com/chrischall/charlotteonthecheap-mcp)'
-EXPIRED=6193   # the "expired" category — always exclude it
+BASE=https://www.charlotteonthecheap.com   # or any sister site, see SKILL.md
+UA='onthecheap-skill (+https://github.com/chrischall/onthecheap-mcp)'
+
+# Resolve the "expired" category for THIS site — the id differs on every one
+# (2, 379, 4483, 6193, 7803, 16289, …), so a hardcoded value silently matches
+# nothing and serves dead deals as live.
+EXPIRED=$(curl -sA "$UA" "$BASE/wp-json/wp/v2/categories?slug=expired&_fields=id" | jq -r '.[0].id // empty')
+echo "expired category on this site: ${EXPIRED:-none}"
 ```
 
 ## Articles
@@ -54,10 +59,12 @@ entities show through (`Turtle &amp; Tortoise`, `Birkdale Buds &#8212; free`).
 Swap in the Python decoder from "Decode HTML entities" before showing titles to
 a user.
 
-Useful ids (2026-07-19): categories — `charlotte-kids` 4, `charlotte-music` 35,
-`charlotte-food` 5, `festivals` 45, `charlotte-art` 14, `museums` 13,
-`expired` 6193. Locations — `center-city` 6276, `north-charlotte` 6256,
-`lake-norman` 6264, `south-end` 6260, `cabarrus-county` 6262.
+**Term ids are per-site — always look them up rather than reusing these.** For
+Charlotte (2026-07-19) they happened to be: categories `charlotte-kids` 4,
+`charlotte-music` 35, `charlotte-food` 5, `festivals` 45, `museums` 13;
+locations `center-city` 6276, `lake-norman` 6264, `south-end` 6260. The same
+slugs carry completely different ids on Denver or Atlanta, so the discovery
+commands above are the reliable path.
 
 `after`/`before` compare against a full timestamp, so widen a bare date:
 `after=YYYY-MM-DDT00:00:00`, `before=YYYY-MM-DDT23:59:59`. Without the time on
@@ -151,6 +158,6 @@ print(f"\nmonth total: {total}")'
 month 2026-08
 ```
 
-Expected for `2026-08`: 31 days, **510** events total, while the grid itself
-renders only 124 — the difference is the `+N more` overflow. Always report the
+Expected for Charlotte in one August: 31 days, **510** events total, while the
+grid itself rendered only 124 — the difference is the `+N more` overflow. Always report the
 computed total, and fetch the day page for a complete listing.

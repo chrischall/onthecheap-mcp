@@ -1,10 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/anthropics/dxt/main/dist/mcpb-manifest.schema.json",
   "manifest_version": "0.3",
-  "name": "charlotteonthecheap-mcp",
-  "display_name": "Charlotte On The Cheap",
+  "name": "onthecheap-mcp",
+  "display_name": "On the Cheap",
   "version": "0.1.1",
-  "description": "Find free and cheap things to do in Charlotte — daily event listings, deals, and local guides from Charlotte On The Cheap",
+  "description": "Find free and cheap things to do in 14 US cities — daily event listings, deals and local guides from the On the Cheap network",
   "author": {
     "name": "Chris Chall",
     "email": "chris.c.hall@gmail.com",
@@ -12,77 +12,51 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/chrischall/charlotteonthecheap-mcp"
+    "url": "https://github.com/chrischall/onthecheap-mcp"
   },
-  "homepage": "https://github.com/chrischall/charlotteonthecheap-mcp",
-  "support": "https://github.com/chrischall/charlotteonthecheap-mcp/issues",
+  "homepage": "https://github.com/chrischall/onthecheap-mcp",
+  "support": "https://github.com/chrischall/onthecheap-mcp/issues",
   "license": "MIT",
-  "keywords": [
-    "charlotte",
-    "events",
-    "local-events",
-    "free-events",
-    "deals"
-  ],
+  "keywords": ["events", "local-events", "free-events", "deals", "on-the-cheap"],
   "server": {
     "type": "node",
     "entry_point": "dist/bundle.js",
     "mcp_config": {
       "command": "node",
-      "args": [
-        "${__dirname}/dist/bundle.js"
-      ],
+      "args": ["${__dirname}/dist/bundle.js"],
       "env": {
-        "COTC_BASE_URL": "${user_config.cotc_base_url}"
+        "OTC_SITE": "${user_config.otc_site}",
+        "OTC_BASE_URL": "${user_config.otc_base_url}"
       }
     }
   },
   "user_config": {
-    "cotc_base_url": {
+    "otc_site": {
       "type": "string",
-      "title": "Site base URL (optional)",
-      "description": "Override the Charlotte On The Cheap base URL. Leave blank to use the default. The site is public — no credentials are needed.",
+      "title": "City",
+      "description": "Which On the Cheap site to read: charlotte, denver, atlanta, chicago, columbus, seattle, kansascity, miami, orlando, portland, richmond, southernmaine, triangle, or national. Defaults to charlotte.",
+      "required": false,
+      "default": "charlotte"
+    },
+    "otc_base_url": {
+      "type": "string",
+      "title": "Site URL (advanced)",
+      "description": "Override with an explicit site URL instead of a city key. Leave blank unless you need a site not in the list. These sites are public — no credentials are needed.",
       "required": false
     }
   },
   "tools": [
-    {
-      "name": "cotc_list_events",
-      "description": "List Charlotte events for a given day, with time, price and venue"
-    },
-    {
-      "name": "cotc_events_month_overview",
-      "description": "Day-by-day overview of a month's events with true per-day counts"
-    },
-    {
-      "name": "cotc_search_posts",
-      "description": "Search articles by text, category, location and date range"
-    },
-    {
-      "name": "cotc_get_post",
-      "description": "Fetch one article in full as readable text or HTML"
-    },
-    {
-      "name": "cotc_list_categories",
-      "description": "List article categories with ids and post counts"
-    },
-    {
-      "name": "cotc_list_locations",
-      "description": "List Charlotte-area locations with ids and post counts"
-    },
-    {
-      "name": "cotc_healthcheck",
-      "description": "Verify the site is reachable"
-    }
+    { "name": "otc_list_events", "description": "List events for a given day, with time, price and venue" },
+    { "name": "otc_events_month_overview", "description": "Day-by-day overview of a month with true per-day counts" },
+    { "name": "otc_search_posts", "description": "Search articles by text, category, location and date range" },
+    { "name": "otc_get_post", "description": "Fetch one article in full as readable text or HTML" },
+    { "name": "otc_list_categories", "description": "List article categories with ids and post counts" },
+    { "name": "otc_list_locations", "description": "List local areas with ids and post counts" },
+    { "name": "otc_list_sites", "description": "List the cities in the On the Cheap network" },
+    { "name": "otc_healthcheck", "description": "Verify the configured site is reachable" }
   ],
   "compatibility": {
-    "platforms": [
-      "darwin",
-      "win32",
-      "linux"
-    ],
-    "runtimes": {
-      "node": ">=22.5"
-    }
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "node": ">=22.5" }
   }
 }

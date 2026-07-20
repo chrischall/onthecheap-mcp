@@ -26,7 +26,7 @@ function listToolsViaStdio(entry: string, cwd: string): Promise<{ name: string; 
       cwd,
       // The site needs no credentials at all, so the server must boot and
       // serve tools/list with a completely bare environment.
-      env: { ...process.env, COTC_BASE_URL: '' },
+      env: { ...process.env, OTC_BASE_URL: '', OTC_SITE: '' },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let out = '';
@@ -79,16 +79,16 @@ function listToolsViaStdio(entry: string, cwd: string): Promise<{ name: string; 
 
 // Lower bound, not an exact count: the boot test must not break when tools are
 // added on other branches (the PR is CI-tested merged with main).
-const MIN_TOOLS = 6;
+const MIN_TOOLS = 7;
 
 describe('server boot (built artifacts)', () => {
   it('bundled .mcpb (dist/bundle.js) boots WITHOUT node_modules and lists tools', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'cotc-mcpb-'));
+    const dir = mkdtempSync(join(tmpdir(), 'otc-mcpb-'));
     try {
       copyFileSync(BUNDLE, join(dir, 'bundle.js'));
       const tools = await listToolsViaStdio(join(dir, 'bundle.js'), dir);
       expect(tools.length).toBeGreaterThanOrEqual(MIN_TOOLS);
-      expect(tools.map((t) => t.name)).toContain('cotc_healthcheck');
+      expect(tools.map((t) => t.name)).toContain('otc_healthcheck');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -97,7 +97,7 @@ describe('server boot (built artifacts)', () => {
   it('npm bin (dist/index.js) boots with node_modules and lists tools', async () => {
     const tools = await listToolsViaStdio(BIN, ROOT);
     expect(tools.length).toBeGreaterThanOrEqual(MIN_TOOLS);
-    expect(tools.map((t) => t.name)).toContain('cotc_healthcheck');
+    expect(tools.map((t) => t.name)).toContain('otc_healthcheck');
   }, 30_000);
 
   // This server only ever reads a public site. A tool advertising itself as

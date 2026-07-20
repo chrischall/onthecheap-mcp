@@ -1,7 +1,11 @@
-# Local `wrangler dev` variables for the Charlotte On The Cheap connector.
+# Local `wrangler dev` variables for the On the Cheap connector.
 # Copy to `.dev.vars` (gitignored) to override anything locally.
 #
-# There are NO credentials to set: the site is public and the connector's
-# login page collects nothing. This file exists only so the base URL can be
-# pointed elsewhere while developing.
-COTC_BASE_URL=https://www.charlotteonthecheap.com
+# There are NO credentials to set: the sites are public and the connector's
+# login page collects nothing. These only choose which site to read.
+
+# Which city this deployment serves. See `otc_list_sites` for the full list.
+OTC_SITE=charlotte
+
+# Advanced: an explicit site URL, overriding OTC_SITE.
+# OTC_BASE_URL=https://www.charlotteonthecheap.com

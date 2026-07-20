@@ -1,24 +1,29 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.chrischall/charlotteonthecheap-mcp",
-  "description": "Charlotte On The Cheap MCP — free and cheap Charlotte events, deals and local guides",
+  "name": "io.github.chrischall/onthecheap-mcp",
+  "description": "On the Cheap MCP — free and cheap events, deals and local guides across 14 US cities",
   "repository": {
-    "url": "https://github.com/chrischall/charlotteonthecheap-mcp",
+    "url": "https://github.com/chrischall/onthecheap-mcp",
     "source": "github"
   },
   "version": "0.1.1",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "charlotteonthecheap-mcp",
+      "identifier": "onthecheap-mcp",
       "version": "0.1.1",
-      "transport": {
-        "type": "stdio"
-      },
+      "transport": { "type": "stdio" },
       "environmentVariables": [
         {
-          "name": "COTC_BASE_URL",
-          "description": "Optional override for the Charlotte On The Cheap base URL. The site is public; no credentials are required.",
+          "name": "OTC_SITE",
+          "description": "Which On the Cheap city to read (e.g. charlotte, denver, triangle). Defaults to charlotte.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "OTC_BASE_URL",
+          "description": "Explicit site URL, overriding OTC_SITE. The sites are public; no credentials are required.",
           "isRequired": false,
           "format": "string",
           "isSecret": false

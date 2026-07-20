@@ -48,13 +48,13 @@ jobs:
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
 
-      # The skill lives at skills/charlotteonthecheap-mcp/SKILL.md (plugin skills
+      # The skill lives at skills/onthecheap-mcp/SKILL.md (plugin skills
       # must be directories), but mcp-publish's skill packaging and ClawHub
       # publish steps look for SKILL.md at the repo root. Stage a copy so
       # both keep working; drop this once the shared action falls back to
       # skills/*/SKILL.md on its own.
       - name: Stage skill for mcp-publish
-        run: cp skills/charlotteonthecheap-mcp/SKILL.md SKILL.md
+        run: cp skills/onthecheap-mcp/SKILL.md SKILL.md
 
       - uses: chrischall/workflows/.github/actions/mcp-publish@main
         with:

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { env, createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
 import worker from '../src/worker.js';
-import { CotcClient } from '../src/client.js';
+import { OtcClient } from '../src/client.js';
 
 // Runs inside the real Workers runtime (Miniflare) against wrangler.jsonc's
 // bindings. Covers what the node suite structurally cannot: that the Worker
@@ -65,17 +65,19 @@ describe('zero-auth login page', () => {
     );
     expect(res.status).toBe(200);
     const html = await res.text();
-    // Charlotte On The Cheap has no accounts: the page must not ask for any.
+    // The sites have no accounts: the page must not ask for any.
     expect(html).not.toMatch(/<input[^>]*type="(password|text)"/);
     expect(html).not.toContain('Secure sign-in');
-    expect(html).toContain('Charlotte On The Cheap');
+    // Branded as the network, not a city — the page renders from a
+    // module-scope object, before the Worker env names the configured site.
+    expect(html).toContain('On the Cheap');
     // It must still be a usable form, or the grant can never complete.
     expect(html).toMatch(/<button[^>]*type="submit"/);
     expect(html).toContain('name="oauthReq"');
   });
 });
 
-describe('CotcClient under the Workers runtime', () => {
+describe('OtcClient under the Workers runtime', () => {
   it('does not detach global fetch from its this-binding', async () => {
     // Regression guard for the "Illegal invocation" bug: storing
     // `globalThis.fetch` in a property and calling it detached throws in
@@ -83,7 +85,7 @@ describe('CotcClient under the Workers runtime', () => {
     // pool. The client's login-time reachability check is the exact path that
     // failed. We can't assert the site is reachable from CI, but the binding
     // error must never be the reason.
-    const health = await new CotcClient().healthcheck();
+    const health = await new OtcClient().healthcheck();
     if (!health.ok) {
       expect(health.error ?? '').not.toMatch(/illegal invocation/i);
     }
@@ -94,7 +96,7 @@ describe('worker entry point', () => {
   it('exports the MCP agent Durable Object class wrangler binds', async () => {
     // A missing/renamed export fails only at deploy time otherwise.
     const mod: any = await import('../src/worker.js');
-    expect(typeof mod.CotcMcpAgent).toBe('function');
+    expect(typeof mod.OtcMcpAgent).toBe('function');
   });
 
   it('binds the Durable Object and KV namespace the harness needs', () => {

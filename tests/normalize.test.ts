@@ -86,8 +86,16 @@ describe('compactPost', () => {
     expect(compactPost({ id: 1 })).toMatchObject({ id: 1, title: '' });
   });
 
-  it('flags a post carrying the expired category', () => {
-    expect(compactPost(post).expired).toBe(false);
-    expect(compactPost({ ...post, categories: [6193] }).expired).toBe(true);
+  it('flags a post carrying the expired category, using the id it is given', () => {
+    // The id is passed in, not hardcoded: it differs on every site in the
+    // network, so a baked-in constant would mislabel posts elsewhere.
+    expect(compactPost(post, 6193).expired).toBe(false);
+    expect(compactPost({ ...post, categories: [6193] }, 6193).expired).toBe(true);
+    expect(compactPost({ ...post, categories: [7803] }, 7803).expired).toBe(true);
+  });
+
+  it('leaves the expired flag undefined when no id is supplied', () => {
+    // Better to say nothing than to guess with another site's id.
+    expect(compactPost(post).expired).toBeUndefined();
   });
 });

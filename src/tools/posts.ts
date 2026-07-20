@@ -1,33 +1,41 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { textResult, toolAnnotations, PositiveInt } from '@chrischall/mcp-utils';
-import type { CotcClient } from '../client.js';
+import type { OtcClient } from '../client.js';
 import { compactPost, htmlToText, decodeEntities } from '../normalize.js';
 
 const IsoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected an ISO date, e.g. 2026-07-25');
 
-export function registerPostTools(server: McpServer, client: CotcClient): void {
+export function registerPostTools(server: McpServer, client: OtcClient): void {
+  // Name the configured site in the descriptions. The server can be pointed at
+  // any site in the network, so a hardcoded city would tell the model the
+  // wrong thing about what it is searching.
+  const site = client.site;
+  const label = site?.name ?? 'the configured On the Cheap site';
+  const area = site?.area ?? 'the site’s area';
+
   server.registerTool(
-    'cotc_search_posts',
+    'otc_search_posts',
     {
-      title: 'Search Charlotte On The Cheap articles',
+      title: `Search ${label} articles`,
       description:
-        'Search and filter Charlotte On The Cheap articles — free and cheap things to do, deals, festivals, kids activities and local guides. ' +
-        'Filter by full-text `query`, `category` or `location` id (see cotc_list_categories / cotc_list_locations), and publication date range. ' +
+        `Search and filter ${label} articles — free and cheap things to do in ${area}, plus deals, festivals, ` +
+        'kids activities and local guides. ' +
+        'Filter by full-text `query`, `category` or `location` id (see otc_list_categories / otc_list_locations), and publication date range. ' +
         'Retired deals live in an "expired" category and are excluded by default; set `include_expired` to search them too. ' +
-        'Returns slim summaries by default — use cotc_get_post for an article\'s full text. Read-only.',
+        'Returns slim summaries by default — use otc_get_post for an article\'s full text. Read-only.',
       annotations: toolAnnotations({
-        title: 'Search Charlotte On The Cheap articles',
+        title: `Search ${label} articles`,
         readOnly: true,
         idempotent: true,
         openWorld: true,
       }),
       inputSchema: {
         query: z.string().optional().describe('Full-text search, e.g. "free museum day"'),
-        category: PositiveInt.optional().describe('Category id from cotc_list_categories'),
-        location: PositiveInt.optional().describe('Location id from cotc_list_locations'),
+        category: PositiveInt.optional().describe('Category id from otc_list_categories'),
+        location: PositiveInt.optional().describe('Location id from otc_list_locations'),
         tag: PositiveInt.optional().describe('Tag id'),
         after: IsoDate.optional().describe('Only posts published on or after this date'),
         before: IsoDate.optional().describe('Only posts published on or before this date'),
@@ -72,33 +80,34 @@ export function registerPostTools(server: McpServer, client: CotcClient): void {
           : undefined,
       });
 
+      // Resolved (not hardcoded) so the `expired` flag is right on every site.
+      const expiredId = compact ? await client.resolveExpiredCategoryId() : null;
+
       return textResult({
+        site: site?.key,
         total: result.total,
         total_pages: result.totalPages,
         returned: result.posts.length,
-        posts: compact ? result.posts.map(compactPost) : result.posts,
+        posts: compact ? result.posts.map((p) => compactPost(p, expiredId)) : result.posts,
       });
     },
   );
 
   server.registerTool(
-    'cotc_get_post',
+    'otc_get_post',
     {
-      title: 'Get a Charlotte On The Cheap article',
+      title: `Get an ${label} article`,
       description:
-        'Fetch one Charlotte On The Cheap article in full by numeric id, slug, or full URL. ' +
+        `Fetch one ${label} article in full by numeric id, slug, or full URL. ` +
         'Returns the article text as readable plain text by default; set `format` to "html" for the original markup. Read-only.',
       annotations: toolAnnotations({
-        title: 'Get a Charlotte On The Cheap article',
+        title: `Get an ${label} article`,
         readOnly: true,
         idempotent: true,
         openWorld: true,
       }),
       inputSchema: {
-        post: z
-          .string()
-          .min(1)
-          .describe('Post id, slug, or full charlotteonthecheap.com URL'),
+        post: z.string().min(1).describe('Post id, slug, or full article URL'),
         format: z
           .enum(['text', 'html'])
           .optional()
@@ -109,6 +118,7 @@ export function registerPostTools(server: McpServer, client: CotcClient): void {
       const record = await client.getPost(post);
       const body = record.content?.rendered ?? '';
       return textResult({
+        site: site?.key,
         id: record.id,
         slug: record.slug,
         date: record.date?.slice(0, 10),

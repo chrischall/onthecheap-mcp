@@ -1,34 +1,23 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "charlotteonthecheap-mcp",
-  "owner": {
-    "name": "Chris Hall",
-    "email": "chris.c.hall@gmail.com"
-  },
+  "name": "onthecheap-mcp",
+  "owner": { "name": "Chris Hall", "email": "chris.c.hall@gmail.com" },
   "metadata": {
-    "description": "MCP server for Charlotte On The Cheap — free and cheap Charlotte events, deals and local guides",
+    "description": "MCP server for the On the Cheap network — free and cheap events, deals and local guides across 14 US cities",
     "version": "0.1.1"
   },
   "plugins": [
     {
-      "name": "charlotteonthecheap-mcp",
-      "displayName": "Charlotte On The Cheap",
+      "name": "onthecheap-mcp",
+      "displayName": "On the Cheap",
       "source": "./",
-      "description": "MCP server for Charlotte On The Cheap — daily Charlotte event listings with times, prices and venues, plus searchable deals and local guides",
+      "description": "MCP server for the On the Cheap network — daily event listings with times, prices and venues, plus searchable deals and local guides for 14 US cities",
       "version": "0.1.1",
-      "author": {
-        "name": "Chris Hall"
-      },
-      "homepage": "https://github.com/chrischall/charlotteonthecheap-mcp",
-      "repository": "https://github.com/chrischall/charlotteonthecheap-mcp",
+      "author": { "name": "Chris Hall" },
+      "homepage": "https://github.com/chrischall/onthecheap-mcp",
+      "repository": "https://github.com/chrischall/onthecheap-mcp",
       "license": "MIT",
-      "keywords": [
-        "charlotte",
-        "events",
-        "local-events",
-        "deals",
-        "mcp"
-      ],
+      "keywords": ["events", "local-events", "deals", "on-the-cheap", "mcp"],
       "category": "productivity"
     }
   ]

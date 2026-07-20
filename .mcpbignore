@@ -38,7 +38,7 @@ CLAUDE.md
 
 # Registry / plugin / skill manifests (not used at runtime).
 # Root SKILL.md stays ignored: release-please.yml stages a copy of
-# skills/charlotteonthecheap-mcp/SKILL.md at the root for mcp-publish, and mcpb
+# skills/onthecheap-mcp/SKILL.md at the root for mcp-publish, and mcpb
 # pack runs after that staging step.
 server.json
 plugin.json
