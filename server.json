@@ -6,13 +6,15 @@
     "url": "https://github.com/chrischall/onthecheap-mcp",
     "source": "github"
   },
-  "version": "0.1.1",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "onthecheap-mcp",
-      "version": "0.1.1",
-      "transport": { "type": "stdio" },
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
         {
           "name": "OTC_SITE",

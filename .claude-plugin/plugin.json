@@ -1,13 +1,22 @@
 {
   "name": "onthecheap-mcp",
   "displayName": "On the Cheap",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MCP server for the On the Cheap network — free and cheap events, deals and local guides across 14 US cities",
-  "author": { "name": "Chris Hall", "email": "chris.c.hall@gmail.com" },
+  "author": {
+    "name": "Chris Hall",
+    "email": "chris.c.hall@gmail.com"
+  },
   "homepage": "https://github.com/chrischall/onthecheap-mcp",
   "repository": "https://github.com/chrischall/onthecheap-mcp",
   "license": "MIT",
-  "keywords": ["events", "local-events", "deals", "on-the-cheap", "mcp"],
+  "keywords": [
+    "events",
+    "local-events",
+    "deals",
+    "on-the-cheap",
+    "mcp"
+  ],
   "skills": "./skills/",
   "mcp": "./.mcp.json"
 }

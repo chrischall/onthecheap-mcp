@@ -3,7 +3,7 @@
   "manifest_version": "0.3",
   "name": "onthecheap-mcp",
   "display_name": "On the Cheap",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Find free and cheap things to do in 14 US cities — daily event listings, deals and local guides from the On the Cheap network",
   "author": {
     "name": "Chris Chall",
@@ -17,13 +17,21 @@
   "homepage": "https://github.com/chrischall/onthecheap-mcp",
   "support": "https://github.com/chrischall/onthecheap-mcp/issues",
   "license": "MIT",
-  "keywords": ["events", "local-events", "free-events", "deals", "on-the-cheap"],
+  "keywords": [
+    "events",
+    "local-events",
+    "free-events",
+    "deals",
+    "on-the-cheap"
+  ],
   "server": {
     "type": "node",
     "entry_point": "dist/bundle.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/bundle.js"],
+      "args": [
+        "${__dirname}/dist/bundle.js"
+      ],
       "env": {
         "OTC_SITE": "${user_config.otc_site}",
         "OTC_BASE_URL": "${user_config.otc_base_url}"
@@ -46,17 +54,47 @@
     }
   },
   "tools": [
-    { "name": "otc_list_events", "description": "List events for a given day, with time, price and venue" },
-    { "name": "otc_events_month_overview", "description": "Day-by-day overview of a month with true per-day counts" },
-    { "name": "otc_search_posts", "description": "Search articles by text, category, location and date range" },
-    { "name": "otc_get_post", "description": "Fetch one article in full as readable text or HTML" },
-    { "name": "otc_list_categories", "description": "List article categories with ids and post counts" },
-    { "name": "otc_list_locations", "description": "List local areas with ids and post counts" },
-    { "name": "otc_list_sites", "description": "List the cities in the On the Cheap network" },
-    { "name": "otc_healthcheck", "description": "Verify the configured site is reachable" }
+    {
+      "name": "otc_list_events",
+      "description": "List events for a given day, with time, price and venue"
+    },
+    {
+      "name": "otc_events_month_overview",
+      "description": "Day-by-day overview of a month with true per-day counts"
+    },
+    {
+      "name": "otc_search_posts",
+      "description": "Search articles by text, category, location and date range"
+    },
+    {
+      "name": "otc_get_post",
+      "description": "Fetch one article in full as readable text or HTML"
+    },
+    {
+      "name": "otc_list_categories",
+      "description": "List article categories with ids and post counts"
+    },
+    {
+      "name": "otc_list_locations",
+      "description": "List local areas with ids and post counts"
+    },
+    {
+      "name": "otc_list_sites",
+      "description": "List the cities in the On the Cheap network"
+    },
+    {
+      "name": "otc_healthcheck",
+      "description": "Verify the configured site is reachable"
+    }
   ],
   "compatibility": {
-    "platforms": ["darwin", "win32", "linux"],
-    "runtimes": { "node": ">=22.5" }
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=22.5"
+    }
   }
 }
