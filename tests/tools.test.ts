@@ -153,6 +153,37 @@ describe('otc_list_events', () => {
   });
 });
 
+describe('the national hub', () => {
+  it('registers no event tools — it has no local events calendar', async () => {
+    // livingonthecheap.com's /events/ pages respond, but carry one evergreen
+    // online offer repeated on every date. Advertising an events calendar
+    // there would hand the model that same junk entry for any day asked.
+    const national = new OtcClient({ site: 'national' });
+    const h = await createTestHarness((server) => {
+      registerPostTools(server, national);
+      registerEventTools(server, national);
+      registerTaxonomyTools(server, national);
+      registerUtilityTools(server, national);
+    });
+    const names = (await h.listTools()).map((t: { name: string }) => t.name);
+    expect(names).not.toContain('otc_list_events');
+    expect(names).not.toContain('otc_events_month_overview');
+    // The rest of the surface still works there.
+    expect(names).toContain('otc_search_posts');
+    expect(names).toContain('otc_healthcheck');
+    await h.close();
+  });
+
+  it('still registers event tools for a city site', async () => {
+    const city = new OtcClient({ site: 'denver' });
+    const h = await createTestHarness((server) => registerEventTools(server, city));
+    const names = (await h.listTools()).map((t: { name: string }) => t.name);
+    expect(names).toContain('otc_list_events');
+    expect(names).toContain('otc_events_month_overview');
+    await h.close();
+  });
+});
+
 describe('otc_events_month_overview', () => {
   it('reports true totals rather than the truncated preview counts', async () => {
     const h = await setup();

@@ -233,9 +233,15 @@ export class OtcClient {
     const q = new URLSearchParams({ slug, per_page: '1' });
     const { data } = await this.getJson<WpPost[]>('/wp-json/wp/v2/posts', q);
     if (!data.length) {
-      throw new McpToolError(`Found no post matching "${idOrSlugOrUrl}".`, {
-        hint: 'Pass a numeric post id, a slug, or a full charlotteonthecheap.com URL.',
-      });
+      throw new McpToolError(
+        `Found no post matching "${idOrSlugOrUrl}" on ${this.site?.name ?? this.baseUrl}.`,
+        {
+          // Name the configured site, not a fixed one: a URL from a sister
+          // site won't resolve here, and pointing the caller at the wrong
+          // domain is exactly the mistake this server now avoids elsewhere.
+          hint: `Pass a numeric post id, a slug, or a full ${this.baseUrl} URL.`,
+        },
+      );
     }
     return data[0];
   }

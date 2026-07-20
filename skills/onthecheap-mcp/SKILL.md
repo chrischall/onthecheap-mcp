@@ -19,6 +19,10 @@ If the user asks about a city this server isn't pointed at, say so plainly:
 switching is a configuration change (`OTC_SITE`), not something a tool argument
 can do. `otc_list_sites` shows the available keys.
 
+The `national` site (Living On The Cheap) covers US-wide deals and has **no
+local events calendar**, so the event tools aren't registered there at all — if
+they're missing, that's why. Use `otc_search_posts` for national deals.
+
 ## Picking the right tool
 
 - **What's on for a date** → `otc_list_events` with an ISO `date`

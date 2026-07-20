@@ -50,7 +50,8 @@ Common aliases work too — `milehigh`, `raleigh`, `rva`, `kc`, `southflorida`.
 
 ## Tools
 
-All tools are read-only and act on the configured site.
+All tools are read-only and act on the configured site. The two event tools are
+**not registered for `national`**, which has no local events calendar.
 
 | Tool | What it does |
 | --- | --- |

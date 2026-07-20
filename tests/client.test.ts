@@ -140,6 +140,15 @@ describe('getPost', () => {
     const { impl } = stubFetch(jsonResponse([]));
     await expect(client(impl).getPost('no-such-post')).rejects.toThrow(/no post/i);
   });
+
+  it('names the configured site in the not-found error, not a fixed one', async () => {
+    // A URL from a sister site won't resolve here, so pointing the caller at
+    // some other city's domain is actively misleading.
+    const { impl } = stubFetch(jsonResponse([]));
+    const denver = new OtcClient({ site: 'denver', fetchImpl: impl });
+    await expect(denver.getPost('no-such-post')).rejects.toThrow(/Mile High on the Cheap/);
+    await expect(denver.getPost('no-such-post')).rejects.not.toThrow(/charlotteonthecheap/);
+  });
 });
 
 describe('error handling', () => {

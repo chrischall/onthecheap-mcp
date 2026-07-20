@@ -5,6 +5,17 @@ import type { OtcClient } from '../client.js';
 
 export function registerEventTools(server: McpServer, client: OtcClient): void {
   const site = client.site;
+
+  // The national hub publishes country-wide deals and has no local events
+  // calendar. Its /events/ pages do respond, but carry a single evergreen
+  // online offer repeated on every date — which is worse than empty, because
+  // it looks like a real listing. Register nothing rather than advertise a
+  // calendar that doesn't exist.
+  //
+  // Gated here rather than at each call site so the stdio server and the
+  // Worker cannot drift apart on it.
+  if (site?.national) return;
+
   const label = site?.name ?? 'the configured On the Cheap site';
   const area = site?.area ?? 'the site’s area';
 
