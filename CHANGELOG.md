@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0](https://github.com/chrischall/onthecheap-mcp/compare/v0.2.0...v0.3.0) (2026-07-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* `OTC_SITE` and `OTC_BASE_URL` no longer select the site and are no longer read; the `site` argument is required on every tool except `otc_list_sites`. Existing per-city Worker deployments are redundant — one deployment now serves the whole network.
+
+### Features
+
+* serve every On the Cheap city from one server via a required `site` argument ([#15](https://github.com/chrischall/onthecheap-mcp/issues/15)) ([87d724e](https://github.com/chrischall/onthecheap-mcp/commit/87d724eb0a36dae56912474cd71991c8647a8ebd))
+
+
+### Bug Fixes
+
+* **ci:** typecheck the Worker entry and run its test suite ([#12](https://github.com/chrischall/onthecheap-mcp/issues/12)) ([d3030ee](https://github.com/chrischall/onthecheap-mcp/commit/d3030eeea9c4a91ad94091e47232856eba1de67e))
+
 ## [0.2.0](https://github.com/chrischall/onthecheap-mcp/compare/v0.1.1...v0.2.0) (2026-07-20)
 
 
