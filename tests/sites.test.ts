@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { SITES, DEFAULT_SITE_KEY, findSite, requireSite, siteForBaseUrl } from '../src/sites.js';
+import {
+  SITES,
+  DEFAULT_SITE_KEY,
+  SITE_ARG_DESCRIPTION,
+  findSite,
+  requireSite,
+  requireLocalSite,
+  siteForBaseUrl,
+} from '../src/sites.js';
 
 describe('the site registry', () => {
   it('has a unique, url-safe key per site', () => {
@@ -59,6 +67,39 @@ describe('requireSite', () => {
     // indicate the configured site was wrong.
     expect(() => requireSite('atlantis')).toThrow(/unknown site/i);
     expect(() => requireSite('atlantis')).toThrow(/charlotte/);
+  });
+});
+
+describe('requireLocalSite', () => {
+  it('resolves a city site like requireSite does', () => {
+    expect(requireLocalSite('denver').key).toBe('denver');
+    expect(requireLocalSite('rva').key).toBe('richmond');
+  });
+
+  it('rejects the national hub, which has no local events calendar', () => {
+    // The hub's /events/ pages do answer, but carry one evergreen online offer
+    // repeated on every date — worse than empty, because it reads as a real
+    // listing. Refusing beats returning it.
+    expect(() => requireLocalSite('national')).toThrow(/no local events calendar/i);
+  });
+
+  it('names an alternative rather than just refusing', () => {
+    // Only ever thrown from a tool call, where the hint is rendered — unlike
+    // requireSite, which can throw during construction and so puts everything
+    // in the message.
+    expect(() => requireLocalSite('national')).toThrow(
+      expect.objectContaining({ hint: expect.stringMatching(/otc_list_sites/) }),
+    );
+  });
+
+  it('still fails loudly on an unknown site', () => {
+    expect(() => requireLocalSite('atlantis')).toThrow(/unknown site/i);
+  });
+});
+
+describe('SITE_ARG_DESCRIPTION', () => {
+  it('lists every selectable key, so the model can pick without a second call', () => {
+    for (const site of SITES) expect(SITE_ARG_DESCRIPTION).toContain(site.key);
   });
 });
 

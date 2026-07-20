@@ -236,9 +236,9 @@ export class OtcClient {
       throw new McpToolError(
         `Found no post matching "${idOrSlugOrUrl}" on ${this.site?.name ?? this.baseUrl}.`,
         {
-          // Name the configured site, not a fixed one: a URL from a sister
-          // site won't resolve here, and pointing the caller at the wrong
-          // domain is exactly the mistake this server now avoids elsewhere.
+          // Name the site actually being read, not a fixed one: a URL from a
+          // sister site won't resolve here, and pointing the caller at the
+          // wrong domain is exactly the mistake this server avoids elsewhere.
           hint: `Pass a numeric post id, a slug, or a full ${this.baseUrl} URL.`,
         },
       );

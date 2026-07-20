@@ -1,19 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { otcAuth } from '../src/otc-auth.js';
 import { OtcClient } from '../src/client.js';
-import { requireSite } from '../src/sites.js';
 
 // otc-auth.ts imports @chrischall/mcp-connector for TYPES only, so it stays
 // loadable under Node and its logic is testable here rather than in the much
 // slower Workers pool.
 
-const CHARLOTTE = requireSite('charlotte').baseUrl;
-const DENVER = requireSite('denver').baseUrl;
-
 afterEach(() => vi.restoreAllMocks());
-
-const healthy = () =>
-  vi.spyOn(OtcClient.prototype, 'healthcheck').mockResolvedValue({ ok: true, baseUrl: 'x' });
 
 describe('otcAuth', () => {
   it('declares a public service — no credential fields', () => {
@@ -23,8 +16,6 @@ describe('otcAuth', () => {
   });
 
   it('brands as the network, not one city', () => {
-    // The login page renders from this module-scope object, before the
-    // Worker's env (and so the configured site) is known.
     expect(otcAuth.service).toBe('On the Cheap');
   });
 
@@ -33,50 +24,34 @@ describe('otcAuth', () => {
     expect(otcAuth.privacyNote).toMatch(/stores no credentials/i);
   });
 
-  it('defaults to Charlotte when no site is configured', async () => {
-    healthy();
-    await expect(otcAuth.login({}, {})).resolves.toMatchObject({
-      baseUrl: CHARLOTTE,
-      siteKey: 'charlotte',
-    });
+  it('stores no site in the grant, because the connector serves them all', async () => {
+    // A site recorded at authorization time is exactly what pinned the old
+    // deployment to one city. The site now comes from each tool call.
+    await expect(otcAuth.login({}, {})).resolves.toEqual({});
   });
 
-  it('honours OTC_SITE, so a deployment can read another city', async () => {
-    healthy();
-    await expect(otcAuth.login({}, { OTC_SITE: 'denver' })).resolves.toMatchObject({
-      baseUrl: DENVER,
-      siteKey: 'denver',
-    });
-  });
-
-  it('accepts a site alias', async () => {
-    healthy();
-    await expect(otcAuth.login({}, { OTC_SITE: 'milehigh' })).resolves.toMatchObject({
-      siteKey: 'denver',
-    });
-  });
-
-  it('lets OTC_BASE_URL override the site key', async () => {
-    healthy();
+  it('ignores OTC_SITE and OTC_BASE_URL rather than honouring a stale pin', async () => {
     await expect(
-      otcAuth.login({}, { OTC_SITE: 'denver', OTC_BASE_URL: CHARLOTTE }),
-    ).resolves.toMatchObject({ baseUrl: CHARLOTTE, siteKey: 'charlotte' });
+      otcAuth.login({}, { OTC_SITE: 'denver', OTC_BASE_URL: 'https://example.com' }),
+    ).resolves.toEqual({});
   });
 
-  it('rejects an unknown site rather than silently serving another city', async () => {
-    healthy();
-    await expect(otcAuth.login({}, { OTC_SITE: 'atlantis' })).rejects.toThrow(/unknown site/i);
+  it('does not probe any site for reachability', async () => {
+    // With fourteen sites there is no single one whose health is the
+    // connector's health: failing authorization because Charlotte is briefly
+    // down would block a user who only ever asks about Denver. Per-site
+    // reachability is what otc_healthcheck is for.
+    const healthcheck = vi.spyOn(OtcClient.prototype, 'healthcheck');
+    await otcAuth.login({}, {});
+    expect(healthcheck).not.toHaveBeenCalled();
   });
 
-  it('throws an actionable error when the site is unreachable', async () => {
-    // healthcheck() reports rather than throws, so without this check a user
-    // could authorize successfully and only discover the outage on their first
-    // tool call.
+  it('authorizes even while a site is down', async () => {
     vi.spyOn(OtcClient.prototype, 'healthcheck').mockResolvedValue({
       ok: false,
-      baseUrl: CHARLOTTE,
+      baseUrl: 'https://www.charlotteonthecheap.com',
       error: 'ECONNREFUSED',
     });
-    await expect(otcAuth.login({}, {})).rejects.toThrow(/ECONNREFUSED/);
+    await expect(otcAuth.login({}, {})).resolves.toEqual({});
   });
 });

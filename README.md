@@ -25,8 +25,8 @@ Or as a Claude Code plugin:
 
 ## Choosing a city
 
-One server reads one site. Set `OTC_SITE` to a city key — it defaults to
-`charlotte`:
+One server reads the **whole network**. Every tool takes a `site` argument
+naming the city to read — there is no default and no configuration step:
 
 | Key | Site | Area |
 | --- | --- | --- |
@@ -46,12 +46,18 @@ One server reads one site. Set `OTC_SITE` to a city key — it defaults to
 | `national` | Living On The Cheap | US-wide deals (no local events calendar) |
 
 Common aliases work too — `milehigh`, `raleigh`, `rva`, `kc`, `southflorida`.
-`otc_list_sites` reports the same list and which site is active.
+`otc_list_sites` reports the same list.
+
+`site` is required rather than defaulted on purpose: a server that quietly fell
+back to one city would answer a question about Denver with Charlotte's data and
+give no sign anything was wrong. An unknown key is refused with the valid ones
+listed.
 
 ## Tools
 
-All tools are read-only and act on the configured site. The two event tools are
-**not registered for `national`**, which has no local events calendar.
+All tools are read-only. Every tool except `otc_list_sites` takes a required
+`site` argument. The two event tools **reject `national`**, which has no local
+events calendar — it is still searchable via the other tools.
 
 | Tool | What it does |
 | --- | --- |
@@ -61,8 +67,8 @@ All tools are read-only and act on the configured site. The two event tools are
 | `otc_get_post` | One article in full, as readable text or raw HTML. Accepts an id, slug, or URL. |
 | `otc_list_categories` | Category ids and post counts, for filtering searches by topic. |
 | `otc_list_locations` | Local area ids and post counts, for filtering geographically. |
-| `otc_list_sites` | The cities in the network, and which one is active. |
-| `otc_healthcheck` | Confirm the configured site is reachable. |
+| `otc_list_sites` | The cities in the network and their `site` keys. Takes no arguments. |
+| `otc_healthcheck` | Confirm one site is reachable. |
 
 ### Examples
 
@@ -70,7 +76,7 @@ All tools are read-only and act on the configured site. The two event tools are
 
 > Find kids' events in Lake Norman in August
 
-> Any free museum days coming up?
+> Compare free things to do in Denver and Portland next weekend
 
 ## Two things worth knowing
 
@@ -80,6 +86,11 @@ longer exist. Pass `include_expired: true` to search the archive. The category's
 id differs on every site, so it's resolved by slug at request time — a
 hardcoded id silently disables the filter elsewhere.
 
+**Category and location ids are per-site.** Each site is a separate WordPress
+install, so id 13 is a different category on every one of them. Resolve ids
+against the same `site` you then search — an id borrowed from another city will
+filter to something unrelated rather than error.
+
 **Month overviews are previews, with honest counts.** The calendar shows at
 most four listings per day. `otc_events_month_overview` reports each day's
 *true* total alongside the preview — call `otc_list_events` with a date for the
@@ -87,10 +98,8 @@ complete schedule.
 
 ## Configuration
 
-| Env var | Purpose |
-| --- | --- |
-| `OTC_SITE` | Which city to read (default `charlotte`). |
-| `OTC_BASE_URL` | Advanced: an explicit site URL, overriding `OTC_SITE`. |
+None. The city is a per-call `site` argument, not an environment variable, so
+there is nothing to set up before use.
 
 ## Hosted connector (optional)
 
