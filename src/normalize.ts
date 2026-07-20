@@ -1,5 +1,5 @@
 import { parse } from 'node-html-parser';
-import { EXPIRED_CATEGORY_ID, type WpPost } from './client.js';
+import type { WpPost } from './client.js';
 
 /**
  * Decodes the HTML entities WordPress leaves in its rendered fields.
@@ -41,8 +41,12 @@ export interface CompactPost {
  * Full records carry a ~20 KB rendered `content` body, which is far more than
  * a caller browsing or ranking listings needs. Fields are read defensively so
  * a `_fields`-limited response still projects cleanly.
+ *
+ * `expiredCategoryId` is passed in rather than hardcoded because it differs on
+ * every site in the network; omit it and the `expired` flag is left undefined
+ * rather than guessed wrong.
  */
-export function compactPost(post: WpPost): CompactPost {
+export function compactPost(post: WpPost, expiredCategoryId?: number | null): CompactPost {
   const categories = post.categories;
   return {
     id: post.id,
@@ -54,6 +58,9 @@ export function compactPost(post: WpPost): CompactPost {
     image: post.jetpack_featured_media_url || undefined,
     categories,
     locations: post.locations?.length ? post.locations : undefined,
-    expired: categories ? categories.includes(EXPIRED_CATEGORY_ID) : undefined,
+    expired:
+      categories && typeof expiredCategoryId === 'number'
+        ? categories.includes(expiredCategoryId)
+        : undefined,
   };
 }

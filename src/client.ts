@@ -5,17 +5,28 @@ import {
   parseMonthPage,
   toDatePath,
   toMonthPath,
-  type CotcDay,
-  type CotcMonthDay,
+  type OtcDay,
+  type OtcMonthDay,
 } from './events.js';
-
-export const DEFAULT_BASE_URL = 'https://www.charlotteonthecheap.com';
+import {
+  DEFAULT_SITE_KEY,
+  requireSite,
+  siteForBaseUrl,
+  type OtcSite,
+} from './sites.js';
 
 /**
- * The site's "expired" category. Retired deals are recategorised into it
- * rather than deleted, so listings exclude it unless a caller opts in.
+ * The slug every site in the network uses for retired deals. Posts are
+ * recategorised into it rather than deleted, so listings exclude it unless a
+ * caller opts in.
+ *
+ * The slug is stable across the network; the category **id behind it is not**
+ * — it differs on every install (2, 3, 4, 379, … 16289). Hardcoding one site's
+ * id silently disables the filter everywhere else: pointed at Denver, an id
+ * taken from Charlotte matched nothing and served 4,187 dead deals as live.
+ * So the id is resolved from this slug at request time and cached per client.
  */
-export const EXPIRED_CATEGORY_ID = 6193;
+export const EXPIRED_CATEGORY_SLUG = 'expired';
 
 export interface ListPostsParams {
   search?: string;
@@ -62,29 +73,40 @@ export interface WpTerm {
   count: number;
 }
 
-export interface CotcClientOptions {
+export interface OtcClientOptions {
+  /** Site key or alias, e.g. "denver". Ignored when `baseUrl` is given. */
+  site?: string;
+  /** Explicit base URL, overriding `site`. */
   baseUrl?: string;
   fetchImpl?: typeof fetch;
 }
 
 /**
- * Reads Charlotte On The Cheap.
+ * Reads one site in the "on the Cheap" network.
  *
- * The site exposes an unauthenticated WordPress REST API, so there are no
+ * Every site exposes an unauthenticated WordPress REST API, so there are no
  * credentials to configure and every read is a plain server-side fetch. The
  * events plugin is the exception: it is deliberately not registered with the
  * REST API, so listings are parsed from its server-rendered HTML.
+ *
+ * Which site is read comes from (in order) an explicit `baseUrl`, an explicit
+ * `site` key, `OTC_BASE_URL`, `OTC_SITE`, then the default.
  */
-export class CotcClient {
+export class OtcClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  /** The network entry being read, when the base URL matches a known site. */
+  readonly site: OtcSite | undefined;
+  /** Cached `expired` category id: number when found, null when the site has none. */
+  private expiredCategoryId: number | null | undefined;
 
-  constructor(opts: CotcClientOptions = {}) {
+  constructor(opts: OtcClientOptions = {}) {
+    const explicitUrl = opts.baseUrl ?? readEnvVar('OTC_BASE_URL');
+    const siteKey = opts.site ?? readEnvVar('OTC_SITE');
     this.baseUrl = (
-      opts.baseUrl ??
-      readEnvVar('COTC_BASE_URL') ??
-      DEFAULT_BASE_URL
+      explicitUrl ?? requireSite(siteKey ?? DEFAULT_SITE_KEY).baseUrl
     ).replace(/\/+$/, '');
+    this.site = siteForBaseUrl(this.baseUrl);
     // Call the global fetch as a method of globalThis, never as a detached
     // reference. Node tolerates `const f = globalThis.fetch; f(url)`, but the
     // Cloudflare Workers runtime (workerd) throws "Illegal invocation:
@@ -98,7 +120,7 @@ export class CotcClient {
     return {
       // Identify the client rather than impersonating a browser: this is a
       // public API being read as intended, not an evasion.
-      'user-agent': `charlotteonthecheap-mcp/${VERSION} (+https://github.com/chrischall/charlotteonthecheap-mcp)`,
+      'user-agent': `onthecheap-mcp/${VERSION} (+https://github.com/chrischall/onthecheap-mcp)`,
       accept: 'application/json, text/html;q=0.9',
     };
   }
@@ -114,12 +136,15 @@ export class CotcClient {
       );
     }
     if (!res.ok) {
-      throw new McpToolError(`Charlotte On The Cheap returned HTTP ${res.status} for ${url}`, {
+      throw new McpToolError(
+        `${this.site?.name ?? this.baseUrl} returned HTTP ${res.status} for ${url}`,
+        {
         hint:
           res.status === 404
             ? 'The path does not exist — check the id, slug or date.'
             : 'The site may be briefly unavailable; retry shortly.',
-      });
+        },
+      );
     }
     return res;
   }
@@ -154,6 +179,21 @@ export class CotcClient {
     return (await this.request(`${this.baseUrl}${path}`)).text();
   }
 
+  /**
+   * Looks up this site's `expired` category id from its slug, caching the
+   * result (including "this site has none") for the client's lifetime.
+   *
+   * Resolving rather than hardcoding is what makes the exclusion correct on
+   * every site in the network — see `EXPIRED_CATEGORY_SLUG`.
+   */
+  async resolveExpiredCategoryId(): Promise<number | null> {
+    if (this.expiredCategoryId !== undefined) return this.expiredCategoryId;
+    const q = new URLSearchParams({ slug: EXPIRED_CATEGORY_SLUG, _fields: 'id', per_page: '1' });
+    const { data } = await this.getJson<WpTerm[]>('/wp-json/wp/v2/categories', q);
+    this.expiredCategoryId = Array.isArray(data) && data.length ? data[0].id : null;
+    return this.expiredCategoryId;
+  }
+
   async listPosts(params: ListPostsParams): Promise<ListPostsResult> {
     const q = new URLSearchParams();
     q.set('per_page', String(params.perPage ?? 20));
@@ -166,7 +206,10 @@ export class CotcClient {
     // whole day at each end — otherwise `before` drops that day's own posts.
     if (params.after) q.set('after', `${params.after}T00:00:00`);
     if (params.before) q.set('before', `${params.before}T23:59:59`);
-    if (!params.includeExpired) q.set('categories_exclude', String(EXPIRED_CATEGORY_ID));
+    if (!params.includeExpired) {
+      const expiredId = await this.resolveExpiredCategoryId();
+      if (expiredId !== null) q.set('categories_exclude', String(expiredId));
+    }
     if (params.fields?.length) q.set('_fields', params.fields.join(','));
 
     const { data, res } = await this.getJson<WpPost[]>('/wp-json/wp/v2/posts', q);
@@ -190,9 +233,15 @@ export class CotcClient {
     const q = new URLSearchParams({ slug, per_page: '1' });
     const { data } = await this.getJson<WpPost[]>('/wp-json/wp/v2/posts', q);
     if (!data.length) {
-      throw new McpToolError(`Found no post matching "${idOrSlugOrUrl}".`, {
-        hint: 'Pass a numeric post id, a slug, or a full charlotteonthecheap.com URL.',
-      });
+      throw new McpToolError(
+        `Found no post matching "${idOrSlugOrUrl}" on ${this.site?.name ?? this.baseUrl}.`,
+        {
+          // Name the configured site, not a fixed one: a URL from a sister
+          // site won't resolve here, and pointing the caller at the wrong
+          // domain is exactly the mistake this server now avoids elsewhere.
+          hint: `Pass a numeric post id, a slug, or a full ${this.baseUrl} URL.`,
+        },
+      );
     }
     return data[0];
   }
@@ -220,24 +269,31 @@ export class CotcClient {
   }
 
   /** Full listings for one day. */
-  async getEventsForDate(isoDate: string): Promise<CotcDay> {
+  async getEventsForDate(isoDate: string): Promise<OtcDay> {
     const path = toDatePath(isoDate); // validates before any request is made
     return parseDayPage(await this.getHtml(`/events/view-date/${path}/`));
   }
 
   /** Per-day summaries for a month; each day's listing is a truncated preview. */
-  async getEventsForMonth(isoMonth: string): Promise<CotcMonthDay[]> {
+  async getEventsForMonth(isoMonth: string): Promise<OtcMonthDay[]> {
     const path = toMonthPath(isoMonth);
     return parseMonthPage(await this.getHtml(`/events/calendar/${path}/`));
   }
 
-  async healthcheck(): Promise<{ ok: boolean; site?: string; baseUrl: string; error?: string }> {
+  async healthcheck(): Promise<{
+    ok: boolean;
+    site?: string;
+    siteKey?: string;
+    baseUrl: string;
+    error?: string;
+  }> {
     try {
       const { data } = await this.getJson<{ name?: string }>('/wp-json/');
-      return { ok: true, site: data.name, baseUrl: this.baseUrl };
+      return { ok: true, site: data.name, siteKey: this.site?.key, baseUrl: this.baseUrl };
     } catch (e) {
       return {
         ok: false,
+        siteKey: this.site?.key,
         baseUrl: this.baseUrl,
         error: e instanceof Error ? e.message : String(e),
       };

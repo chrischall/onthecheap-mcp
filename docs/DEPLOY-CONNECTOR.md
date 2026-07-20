@@ -1,16 +1,20 @@
 # Deploying the hosted connector
 
-The connector makes Charlotte On The Cheap reachable from **claude.ai** (web,
+The connector makes an On the Cheap site reachable from **claude.ai** (web,
 desktop, mobile) instead of only from Claude Code on a machine with this
 package installed. It is a Cloudflare Worker wrapping the same tool registrars
 the stdio server uses.
+
+**One Worker serves one city.** Which one comes from `OTC_SITE` in
+`wrangler.jsonc`'s `vars` (default `charlotte`). To serve a second city, deploy
+a second Worker with its own `name`, route and KV namespace.
 
 Deploy is **manual, in the operator's own Cloudflare account** — there is no CI
 deploy for connectors.
 
 ## What makes this one unusual
 
-It is **zero-auth**. Charlotte On The Cheap is a public website, so the login
+It is **zero-auth**. The On the Cheap sites are public, so the login
 page collects nothing: it renders a bare "Authorize" button, and connecting
 stores only which site to read. That requires `@chrischall/mcp-connector`
 >= 1.1.0 — earlier versions crashed on an empty `fields` array.
@@ -32,7 +36,7 @@ accounts.
    separate one, or two connectors cross-wire their OAuth grants:
 
    ```bash
-   npx wrangler kv namespace create charlotteonthecheap-connector-oauth
+   npx wrangler kv namespace create onthecheap-connector-oauth
    ```
 
 3. **Paste the returned id** into `wrangler.jsonc`, replacing
@@ -45,7 +49,7 @@ accounts.
 npm run worker:deploy
 ```
 
-Then add `https://connector.charlotteonthecheap.nullnet.app/mcp` as a custom
+Then add `https://connector.onthecheap.nullnet.app/mcp` as a custom
 connector in claude.ai and click through the authorize page.
 
 The custom domain's edge TLS certificate provisions a few minutes **after** the
@@ -64,8 +68,8 @@ Against a live deploy, check OAuth discovery responds and `/mcp` refuses
 unauthenticated calls:
 
 ```bash
-curl -s https://connector.charlotteonthecheap.nullnet.app/.well-known/oauth-authorization-server | jq .
-curl -s -o /dev/null -w '%{http_code}\n' -X POST https://connector.charlotteonthecheap.nullnet.app/mcp   # expect 401
+curl -s https://connector.onthecheap.nullnet.app/.well-known/oauth-authorization-server | jq .
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://connector.onthecheap.nullnet.app/mcp   # expect 401
 ```
 
 Hitting `/authorize` directly with a made-up `client_id` returns an error —
@@ -79,16 +83,19 @@ Workers test does the same.
   only on a real deploy — notably a module-scope `fileURLToPath(import.meta.url)`
   for `.env` loading, or disallowed global-scope work (async I/O, timers,
   `crypto.randomUUID()`) in a module-singleton client constructor. This repo's
-  `CotcClient` constructor is deliberately pure, and `src/worker.ts` builds its
+  `OtcClient` constructor is deliberately pure, and `src/worker.ts` builds its
   client per grant rather than at module scope.
 - **`npm run worker:test` is likewise not a deploy gate** — Miniflare provides
   `import.meta.url` and does not perform startup validation.
+- **A detached `globalThis.fetch` breaks every request** in the Worker with
+  `Illegal invocation`, while passing every Node test and `wrangler deploy`.
+  The client wraps the global rather than storing it; don't "simplify" that.
 - **The Workers pool needs `node-html-parser` pre-bundled.** Its `css-what`
   dependency uses extensionless ESM imports the Workers module resolver
   rejects, so `vitest.workers.config.ts` enables the SSR dep optimizer for it.
   `wrangler deploy` is unaffected — esbuild resolves the extensions at build
   time.
 - **`src/worker.ts` is excluded from `tsconfig.json`**, so the stdio `tsc`
-  build never emits `dist/worker.js`. `src/cotc-auth.ts` is *not* excluded: it
+  build never emits `dist/worker.js`. `src/otc-auth.ts` is *not* excluded: it
   imports the connector for types only, so it stays node-loadable and its
   logic is covered by the fast node suite.

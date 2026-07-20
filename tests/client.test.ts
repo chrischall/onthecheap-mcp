@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { CotcClient, EXPIRED_CATEGORY_ID } from '../src/client.js';
+import { OtcClient } from '../src/client.js';
+
+/** The `expired` category id this fixture site reports for the slug lookup. */
+const EXPIRED_ID = 6193;
 
 function jsonResponse(body: unknown, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
@@ -8,18 +11,33 @@ function jsonResponse(body: unknown, headers: Record<string, string> = {}) {
   });
 }
 
-/** Captures the URLs a client requests, replying with canned responses. */
+/**
+ * Captures the URLs a client requests, replying with canned responses.
+ *
+ * The `expired` category lookup is answered separately from the queue: the
+ * client resolves that id by slug before a default listing, so folding it into
+ * the response sequence would make every test's ordering depend on it.
+ */
 function stubFetch(...responses: Response[]) {
   const calls: string[] = [];
   let i = 0;
   const impl = vi.fn(async (input: any) => {
-    calls.push(String(input));
-    return responses[Math.min(i++, responses.length - 1)];
+    const url = String(input);
+    calls.push(url);
+    if (url.includes('/categories') && url.includes('slug=expired')) {
+      return jsonResponse([{ id: EXPIRED_ID }]);
+    }
+    // Clone: a Response body can only be read once, and a queued response is
+    // reused when a test makes more calls than it enqueued.
+    return responses[Math.min(i++, responses.length - 1)].clone();
   });
   return { impl: impl as unknown as typeof fetch, calls };
 }
 
-const client = (impl: typeof fetch) => new CotcClient({ fetchImpl: impl });
+/** The request the assertions care about, ignoring the expired-slug lookup. */
+const postCalls = (calls: string[]) => calls.filter((c) => !c.includes('slug=expired'));
+
+const client = (impl: typeof fetch) => new OtcClient({ fetchImpl: impl });
 
 describe('listPosts', () => {
   it('requests the WP posts endpoint and returns items plus the header total', async () => {
@@ -28,24 +46,49 @@ describe('listPosts', () => {
     );
     const res = await client(impl).listPosts({ search: 'free concert' });
 
-    expect(calls[0]).toContain('/wp-json/wp/v2/posts');
-    expect(calls[0]).toContain('search=free+concert');
+    expect(postCalls(calls)[0]).toContain('/wp-json/wp/v2/posts');
+    expect(postCalls(calls)[0]).toContain('search=free+concert');
     expect(res.total).toBe(8547);
     expect(res.posts).toHaveLength(1);
   });
 
-  it('excludes the "expired" category by default', async () => {
-    // Roughly a third of the site's posts are expired deals; returning them by
+  it('resolves the "expired" category by slug and excludes it by default', async () => {
+    // Roughly a third of a site's posts are expired deals; returning them by
     // default would surface offers that no longer exist as if they were live.
+    // The id is looked up by slug because it differs on every site in the
+    // network — a hardcoded id silently disables the filter elsewhere.
     const { impl, calls } = stubFetch(jsonResponse([]));
     await client(impl).listPosts({});
-    expect(calls[0]).toContain(`categories_exclude=${EXPIRED_CATEGORY_ID}`);
+    expect(calls.some((c) => c.includes('slug=expired'))).toBe(true);
+    expect(postCalls(calls)[0]).toContain(`categories_exclude=${EXPIRED_ID}`);
+  });
+
+  it('caches the expired lookup instead of repeating it per search', async () => {
+    const { impl, calls } = stubFetch(jsonResponse([]));
+    const c = client(impl);
+    await c.listPosts({});
+    await c.listPosts({ search: 'again' });
+    expect(calls.filter((x) => x.includes('slug=expired'))).toHaveLength(1);
+  });
+
+  it('omits the exclusion when a site has no expired category', async () => {
+    // Absent the category, filtering on a guessed id would exclude something
+    // arbitrary; returning everything unfiltered is the honest fallback.
+    const calls: string[] = [];
+    const impl = vi.fn(async (input: any) => {
+      const url = String(input);
+      calls.push(url);
+      return jsonResponse([]);
+    }) as unknown as typeof fetch;
+    await new OtcClient({ fetchImpl: impl }).listPosts({});
+    expect(postCalls(calls)[0]).not.toContain('categories_exclude');
   });
 
   it('includes expired posts when explicitly asked', async () => {
     const { impl, calls } = stubFetch(jsonResponse([]));
     await client(impl).listPosts({ includeExpired: true });
-    expect(calls[0]).not.toContain('categories_exclude');
+    expect(calls.some((c) => c.includes('slug=expired'))).toBe(false);
+    expect(postCalls(calls)[0]).not.toContain('categories_exclude');
   });
 
   it('passes taxonomy and date filters through', async () => {
@@ -58,7 +101,7 @@ describe('listPosts', () => {
       perPage: 25,
       page: 2,
     });
-    const url = calls[0];
+    const url = postCalls(calls)[0];
     expect(url).toContain('categories=4');
     expect(url).toContain('locations=6276');
     expect(url).toContain('after=2026-01-01T00%3A00%3A00');
@@ -96,6 +139,15 @@ describe('getPost', () => {
   it('raises a helpful error when a slug matches nothing', async () => {
     const { impl } = stubFetch(jsonResponse([]));
     await expect(client(impl).getPost('no-such-post')).rejects.toThrow(/no post/i);
+  });
+
+  it('names the configured site in the not-found error, not a fixed one', async () => {
+    // A URL from a sister site won't resolve here, so pointing the caller at
+    // some other city's domain is actively misleading.
+    const { impl } = stubFetch(jsonResponse([]));
+    const denver = new OtcClient({ site: 'denver', fetchImpl: impl });
+    await expect(denver.getPost('no-such-post')).rejects.toThrow(/Mile High on the Cheap/);
+    await expect(denver.getPost('no-such-post')).rejects.not.toThrow(/charlotteonthecheap/);
   });
 });
 

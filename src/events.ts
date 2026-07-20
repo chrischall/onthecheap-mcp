@@ -2,7 +2,7 @@ import { parse, type HTMLElement } from 'node-html-parser';
 import { McpToolError } from '@chrischall/mcp-utils';
 
 /** A single listing as rendered by the site's `lotc` events plugin. */
-export interface CotcEvent {
+export interface OtcEvent {
   title: string;
   url: string;
   /** As printed: "All Day", "7:00 pm", "8:00 am to 9:00 am". */
@@ -13,16 +13,16 @@ export interface CotcEvent {
   is_free: boolean;
 }
 
-export interface CotcDay {
+export interface OtcDay {
   /** ISO date (YYYY-MM-DD), or null when the page carries no parseable heading. */
   date: string | null;
-  events: CotcEvent[];
+  events: OtcEvent[];
 }
 
-export interface CotcMonthDay {
+export interface OtcMonthDay {
   date: string;
   /** Events actually listed in the calendar cell (the site shows at most four). */
-  events: CotcEvent[];
+  events: OtcEvent[];
   /** How many this cell rendered. */
   shown: number;
   /** True total for the day, from the cell's "+N more events" link. */
@@ -102,7 +102,7 @@ const isPriceSegment = (s: string): boolean => /^(free\b|\$|donation)/i.test(s.t
  * price, `time | venue`. The two-segment case must not be read positionally:
  * treating segment two as the price would report a venue name as the cost.
  */
-function parseMeta(meta: string): Pick<CotcEvent, 'time' | 'price' | 'venue'> {
+function parseMeta(meta: string): Pick<OtcEvent, 'time' | 'price' | 'venue'> {
   const segments = meta
     .split('|')
     .map((s) => s.replace(/\s+/g, ' ').trim())
@@ -121,7 +121,7 @@ function parseMeta(meta: string): Pick<CotcEvent, 'time' | 'price' | 'venue'> {
   return { time, price: rest[0], venue: rest.slice(1).join(' | ') };
 }
 
-function parseEventRow(row: HTMLElement): CotcEvent | null {
+function parseEventRow(row: HTMLElement): OtcEvent | null {
   const anchor = row.querySelector('h3 a');
   if (!anchor) return null;
   const meta = parseMeta(row.querySelector('p.meta')?.textContent ?? '');
@@ -133,11 +133,11 @@ function parseEventRow(row: HTMLElement): CotcEvent | null {
   };
 }
 
-const eventRowsIn = (root: HTMLElement): CotcEvent[] =>
+const eventRowsIn = (root: HTMLElement): OtcEvent[] =>
   root
     .querySelectorAll('div.lotc-v2.row.event')
     .map(parseEventRow)
-    .filter((e): e is CotcEvent => e !== null);
+    .filter((e): e is OtcEvent => e !== null);
 
 /**
  * Parses a single-day listing page.
@@ -146,7 +146,7 @@ const eventRowsIn = (root: HTMLElement): CotcEvent[] =>
  * `p.meta` on the page: the live day page carries a `p.meta` outside any event
  * row, which a global scrape would turn into a phantom event.
  */
-export function parseDayPage(html: string): CotcDay {
+export function parseDayPage(html: string): OtcDay {
   const root = parse(html);
   const heading = root.querySelector('h2.lotc-event')?.textContent ?? '';
   return { date: headingToIso(heading), events: eventRowsIn(root) };
@@ -160,9 +160,9 @@ export function parseDayPage(html: string): CotcDay {
  * overflow count back so callers aren't misled; fetch the day page for the
  * complete list.
  */
-export function parseMonthPage(html: string): CotcMonthDay[] {
+export function parseMonthPage(html: string): OtcMonthDay[] {
   const root = parse(html);
-  const days: CotcMonthDay[] = [];
+  const days: OtcMonthDay[] = [];
 
   for (const cell of root.querySelectorAll('td.calendar-day')) {
     const href = cell.querySelector('div.day-number a')?.getAttribute('href') ?? '';
