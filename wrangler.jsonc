@@ -15,8 +15,11 @@
   // Kept separate from every other connector's OAUTH_KV so their OAuth grants never
   // cross-wire. To stand up a deployment in a different Cloudflare account, create
   // your own (wrangler kv namespace create onthecheap-connector-oauth) and
-  // replace this id.
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "PLACEHOLDER_RUN_KV_NAMESPACE_CREATE" }],
+  // replace this id. NOTE: keep the binding NAME as OAUTH_KV — the OAuth
+  // provider looks that name up. wrangler's create output suggests a binding
+  // derived from the namespace title (onthecheap_connector_oauth); pasting
+  // that verbatim leaves the provider with no store and breaks every grant.
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "a0cd03cd48724144a0f95a5c5dba757b" }],
   // Production custom domain. The zone must be in the deploying account's
   // Cloudflare; wrangler provisions the hostname on deploy. Remove this route
   // to deploy to *.workers.dev only.
