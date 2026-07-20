@@ -7,7 +7,7 @@
   },
   "metadata": {
     "description": "MCP server for the On the Cheap network — free and cheap events, deals and local guides across 14 US cities",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       "displayName": "On the Cheap",
       "source": "./",
       "description": "MCP server for the On the Cheap network — daily event listings with times, prices and venues, plus searchable deals and local guides for 14 US cities",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "Chris Hall"
       },
