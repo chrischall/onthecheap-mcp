@@ -2,7 +2,7 @@
   "name": "onthecheap-mcp",
   "version": "0.2.0",
   "mcpName": "io.github.chrischall/onthecheap-mcp",
-  "description": "On the Cheap MCP server for Claude — developed and maintained by AI (Claude Code)",
+  "description": "On the Cheap MCP server for Claude \u2014 developed and maintained by AI (Claude Code)",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
   "repository": {
     "type": "git",
@@ -29,10 +29,12 @@
     "server.json"
   ],
   "scripts": {
-    "build": "tsc && npm run bundle",
+    "build": "tsc && npm run typecheck:worker && npm run bundle",
+    "typecheck:worker": "tsc -p tsconfig.worker.json",
     "bundle": "esbuild src/index.ts --bundle --platform=node --format=esm --external:dotenv --banner:js='import { createRequire as __createRequire } from \"module\"; const require = __createRequire(import.meta.url);' --outfile=dist/bundle.js",
     "dev": "node dist/index.js",
-    "test": "vitest run",
+    "test": "vitest run && npm run worker:test",
+    "test:node": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "worker:dev": "wrangler dev",

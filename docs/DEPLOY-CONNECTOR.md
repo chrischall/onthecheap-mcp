@@ -60,9 +60,15 @@ Use the `*.workers.dev` URL meanwhile; the custom domain self-heals. The zone
 ## Verifying
 
 ```bash
-npm run worker:test    # Workers-runtime suite (OAuth discovery, 401, login page)
-npm test               # stdio suite — unaffected by the Worker
+npm test               # BOTH suites — node pool then the Workers pool
+npm run test:node      # node pool only (faster inner loop)
+npm run worker:test    # Workers pool only (OAuth discovery, 401, login page)
+npm run typecheck:worker   # typechecks src/worker.ts, which tsconfig.json excludes
 ```
+
+`npm run build` runs `typecheck:worker`, and `npm test` runs both pools, so CI
+(`build-command: npm run build`, `test-command: npm test`) covers the Worker
+entry point and its suite without needing a workflow change.
 
 Against a live deploy, check OAuth discovery responds and `/mcp` refuses
 unauthenticated calls:
@@ -88,8 +94,12 @@ Workers test does the same.
 - **`npm run worker:test` is likewise not a deploy gate** — Miniflare provides
   `import.meta.url` and does not perform startup validation.
 - **A detached `globalThis.fetch` breaks every request** in the Worker with
-  `Illegal invocation`, while passing every Node test and `wrangler deploy`.
+  `Illegal invocation`, while passing `wrangler deploy` and BOTH test suites.
   The client wraps the global rather than storing it; don't "simplify" that.
+  Note the Workers *test pool does not enforce this rule* — reintroducing the
+  bug still returns ok there — so the guard is structural and lives in the node
+  suite (it asserts the receiver passed to `fetch` is globalThis). Only
+  `wrangler dev` or a real deploy reproduces the runtime error.
 - **The Workers pool needs `node-html-parser` pre-bundled.** Its `css-what`
   dependency uses extensionless ESM imports the Workers module resolver
   rejects, so `vitest.workers.config.ts` enables the SSR dep optimizer for it.
