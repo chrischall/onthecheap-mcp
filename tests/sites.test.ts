@@ -7,6 +7,7 @@ import {
   requireSite,
   requireLocalSite,
   siteForBaseUrl,
+  siteHostKey,
 } from '../src/sites.js';
 
 describe('the site registry', () => {
@@ -100,6 +101,21 @@ describe('requireLocalSite', () => {
 describe('SITE_ARG_DESCRIPTION', () => {
   it('lists every selectable key, so the model can pick without a second call', () => {
     for (const site of SITES) expect(SITE_ARG_DESCRIPTION).toContain(site.key);
+  });
+});
+
+describe('siteHostKey', () => {
+  it('strips a leading www. and lowercases, so both forms of a site match', () => {
+    expect(siteHostKey('https://WWW.MileHighOnTheCheap.com/2026/07/x/'))
+      .toBe(siteHostKey('https://milehighonthecheap.com'));
+  });
+
+  it('returns empty for an unparseable URL', () => {
+    expect(siteHostKey('not a url')).toBe('');
+  });
+
+  it('does not strip www inside the host', () => {
+    expect(siteHostKey('https://wwwx.example.com')).toBe('wwwx.example.com');
   });
 });
 

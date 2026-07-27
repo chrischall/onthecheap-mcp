@@ -3,8 +3,10 @@ import { defineConfig } from 'vitest/config';
 
 // Runs `tests/worker.test.ts` inside the real Workers runtime (via Miniflare),
 // against `wrangler.jsonc`'s bindings (the `CotcMcpAgent` Durable Object +
-// `OAUTH_KV`). Kept separate from the stdio suite's `vitest.config.ts` /
-// `npm test`, which runs under Node and never touches this file.
+// `OAUTH_KV`). Kept separate from the stdio suite's `vitest.config.ts`, which
+// runs under Node — but `npm test` now runs BOTH (`vitest run && npm run
+// worker:test`), so this file IS exercised by a plain `npm test`. Use
+// `npm run test:node` for the node pool alone.
 export default defineConfig({
   plugins: [
     cloudflareTest({

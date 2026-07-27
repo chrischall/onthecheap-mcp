@@ -12,6 +12,7 @@ import {
   DEFAULT_SITE_KEY,
   requireSite,
   siteForBaseUrl,
+  siteHostKey,
   type OtcSite,
 } from './sites.js';
 
@@ -224,6 +225,14 @@ export class OtcClient {
   async getPost(idOrSlugOrUrl: string): Promise<WpPost> {
     const ref = idOrSlugOrUrl.trim();
 
+    // A full URL names its own site. Reducing it to a slug and querying
+    // whichever site the caller happened to pass silently returns a DIFFERENT
+    // city's article whenever the slug collides — and slugs collide constantly
+    // across these sites ("free-museum-day" exists in most of them). The tool
+    // description already promises "a full URL must match the site you name";
+    // this enforces it instead of hoping.
+    this.assertSameSite(ref, idOrSlugOrUrl);
+
     if (/^\d+$/.test(ref)) {
       const { data } = await this.getJson<WpPost>(`/wp-json/wp/v2/posts/${ref}`);
       return data;
@@ -244,6 +253,38 @@ export class OtcClient {
       );
     }
     return data[0];
+  }
+
+  /**
+   * Reject a full URL belonging to a different On the Cheap site.
+   *
+   * Non-URL refs (ids, slugs) are unaffected — they carry no site of their own,
+   * so the caller's `site` is the only signal and is taken at face value.
+   */
+  private assertSameSite(ref: string, original: string): void {
+    if (!/^https?:\/\//i.test(ref)) return;
+    // siteHostKey, not a raw host comparison: these sites all serve both the
+    // bare and the `www.` host, and SITES records only one form each. Comparing
+    // raw hosts rejected the other form of the SAME site — and then named it as
+    // the other site, because siteForBaseUrl below DOES strip `www.`, so the
+    // message read "belongs to Mile High on the Cheap, but you asked for Mile
+    // High on the Cheap". Both sides normalize through the one helper now.
+    const refHost = siteHostKey(ref);
+    if (!refHost) return; // unparseable: fall through to the existing slug handling
+    if (refHost === siteHostKey(this.baseUrl)) return;
+    const named = this.site?.name ?? this.baseUrl;
+    // Show the canonical host from SITES, not the stripped comparison key —
+    // "pass a URL on www.milehighonthecheap.com" is the form we actually record.
+    const ownHost = new URL(this.baseUrl).host;
+    const other = siteForBaseUrl(`https://${refHost}`);
+    throw new McpToolError(
+      `The URL "${original}" belongs to ${other?.name ?? refHost}, but you asked for ${named}.`,
+      {
+        hint: other
+          ? `Pass site: "${other.key}" to read it, or give a slug/id from ${named}.`
+          : `Pass a URL on ${ownHost}, or a slug/id from ${named}.`,
+      },
+    );
   }
 
   private toSlug(ref: string): string {

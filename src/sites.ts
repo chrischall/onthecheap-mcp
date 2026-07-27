@@ -137,15 +137,29 @@ export function requireLocalSite(keyOrAlias: string): OtcSite {
   return site;
 }
 
+/**
+ * Comparison key for a site host: lowercased, leading `www.` stripped.
+ *
+ * Every one of these sites answers on both the bare and the `www.` host, and
+ * SITES records only one of them (`www.` for charlotte and denver, bare for the
+ * rest). So the two forms name the SAME site and any host comparison has to say
+ * so — a caller pasting a URL from their browser has no idea which form we
+ * happened to write down. Exported so the one place that compares hosts and the
+ * one place that resolves them can't drift apart.
+ *
+ * Returns '' for an unparseable URL; callers treat that as "no match".
+ */
+export function siteHostKey(url: string): string {
+  try {
+    return new URL(url).host.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
 /** Matches a base URL back to its site, so an explicit URL still names itself. */
 export function siteForBaseUrl(baseUrl: string): OtcSite | undefined {
-  const host = (() => {
-    try {
-      return new URL(baseUrl).host.replace(/^www\./, '').toLowerCase();
-    } catch {
-      return '';
-    }
-  })();
+  const host = siteHostKey(baseUrl);
   if (!host) return undefined;
-  return SITES.find((s) => new URL(s.baseUrl).host.replace(/^www\./, '').toLowerCase() === host);
+  return SITES.find((s) => siteHostKey(s.baseUrl) === host);
 }

@@ -120,8 +120,9 @@ Cloudflare account: see
 
 ```bash
 npm install
-npm test          # node suite
-npm run worker:test   # Workers-runtime suite
+npm test              # node + Workers-runtime suites
+npm run test:node     # node suite only
+npm run worker:test   # Workers-runtime suite only
 npm run build
 ```
 

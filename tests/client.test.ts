@@ -247,3 +247,56 @@ describe('global fetch binding', () => {
     expect(receiver).toBe(globalThis);
   });
 });
+
+describe('getPost with a full URL from another site', () => {
+  it('refuses rather than silently reading the same slug on the named site', async () => {
+    // Slugs collide across these sites constantly, so the old behaviour —
+    // reduce the URL to its slug, query whichever site was named — returned a
+    // different city's article with no indication anything was wrong.
+    const { impl, calls } = stubFetch(jsonResponse([]));
+    const denver = new OtcClient({ site: 'denver', fetchImpl: impl });
+    await expect(
+      denver.getPost('https://atlantaonthecheap.com/2026/07/free-museum-day/'),
+    ).rejects.toThrow(/belongs to Atlanta on the Cheap.*Mile High on the Cheap/is);
+    // No request at all: the mismatch is caught before any lookup.
+    expect(calls).toEqual([]);
+  });
+
+  it('still accepts a URL on the site being read', async () => {
+    const { impl, calls } = stubFetch(jsonResponse([{ id: 7, slug: 'free-museum-day' }]));
+    const denver = new OtcClient({ site: 'denver', fetchImpl: impl });
+    const post = await denver.getPost('https://www.milehighonthecheap.com/2026/07/free-museum-day/');
+    expect(post.id).toBe(7);
+    expect(calls[0]).toContain('slug=free-museum-day');
+  });
+
+  // Every one of these sites answers on both the bare and the `www.` host, and
+  // SITES records only ONE form each (`www.` for charlotte/denver, bare for the
+  // rest). A caller pasting a URL out of their browser can't know which we
+  // wrote down, so both forms must resolve to the same site — in both
+  // directions.
+  it.each([
+    ['denver', 'https://milehighonthecheap.com/2026/07/free-museum-day/', 'www-recorded site, bare URL'],
+    ['denver', 'https://www.milehighonthecheap.com/2026/07/free-museum-day/', 'www-recorded site, www URL'],
+    ['atlanta', 'https://www.atlantaonthecheap.com/2026/07/free-museum-day/', 'bare-recorded site, www URL'],
+    ['atlanta', 'https://atlantaonthecheap.com/2026/07/free-museum-day/', 'bare-recorded site, bare URL'],
+  ])('accepts a same-site URL in either www form (%s: %s)', async (site, url) => {
+    const { impl, calls } = stubFetch(jsonResponse([{ id: 7, slug: 'free-museum-day' }]));
+    const client = new OtcClient({ site, fetchImpl: impl });
+    await expect(client.getPost(url)).resolves.toMatchObject({ id: 7 });
+    expect(calls[0]).toContain('slug=free-museum-day');
+  });
+
+  it('never claims a URL belongs to the very site that was asked for', async () => {
+    // The raw-host comparison rejected the other www form, then resolved the
+    // "other" site through siteForBaseUrl — which DOES strip www. — producing
+    // "belongs to Mile High on the Cheap, but you asked for Mile High on the
+    // Cheap": an error that names one site as two.
+    const { impl } = stubFetch(jsonResponse([{ id: 7, slug: 'free-museum-day' }]));
+    const denver = new OtcClient({ site: 'denver', fetchImpl: impl });
+    await expect(
+      denver.getPost('https://milehighonthecheap.com/2026/07/free-museum-day/'),
+    ).resolves.toBeDefined();
+  });
+});
+
