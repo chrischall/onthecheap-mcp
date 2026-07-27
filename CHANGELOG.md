@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.0...v0.3.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **deps:** require @chrischall/mcp-connector &gt;=1.1.1 ([#24](https://github.com/chrischall/onthecheap-mcp/issues/24)) ([014c386](https://github.com/chrischall/onthecheap-mcp/commit/014c386bf273041d53b89568e8d4a7e57466e866))
+
 ## [0.3.0](https://github.com/chrischall/onthecheap-mcp/compare/v0.2.0...v0.3.0) (2026-07-20)
 
 
