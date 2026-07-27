@@ -1,7 +1,7 @@
 {
   "name": "onthecheap-mcp",
   "displayName": "On the Cheap",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "MCP server for the On the Cheap network — free and cheap events, deals and local guides across 14 US cities",
   "author": {
     "name": "Chris Hall",

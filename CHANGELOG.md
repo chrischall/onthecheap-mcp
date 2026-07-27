@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.1...v0.3.2) (2026-07-27)
+
+
+### Bug Fixes
+
+* **posts:** reject a full URL belonging to a different site ([#27](https://github.com/chrischall/onthecheap-mcp/issues/27)) ([ed35a7c](https://github.com/chrischall/onthecheap-mcp/commit/ed35a7cd5ff9c4512e9cbf33dc762812d9e0347c))
+
 ## [0.3.1](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.0...v0.3.1) (2026-07-27)
 
 
