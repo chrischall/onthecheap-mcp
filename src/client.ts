@@ -224,6 +224,14 @@ export class OtcClient {
   async getPost(idOrSlugOrUrl: string): Promise<WpPost> {
     const ref = idOrSlugOrUrl.trim();
 
+    // A full URL names its own site. Reducing it to a slug and querying
+    // whichever site the caller happened to pass silently returns a DIFFERENT
+    // city's article whenever the slug collides — and slugs collide constantly
+    // across these sites ("free-museum-day" exists in most of them). The tool
+    // description already promises "a full URL must match the site you name";
+    // this enforces it instead of hoping.
+    this.assertSameSite(ref, idOrSlugOrUrl);
+
     if (/^\d+$/.test(ref)) {
       const { data } = await this.getJson<WpPost>(`/wp-json/wp/v2/posts/${ref}`);
       return data;
@@ -244,6 +252,34 @@ export class OtcClient {
       );
     }
     return data[0];
+  }
+
+  /**
+   * Reject a full URL belonging to a different On the Cheap site.
+   *
+   * Non-URL refs (ids, slugs) are unaffected — they carry no site of their own,
+   * so the caller's `site` is the only signal and is taken at face value.
+   */
+  private assertSameSite(ref: string, original: string): void {
+    if (!/^https?:\/\//i.test(ref)) return;
+    let refHost: string;
+    try {
+      refHost = new URL(ref).host.toLowerCase();
+    } catch {
+      return; // unparseable: fall through to the existing slug handling
+    }
+    const ownHost = new URL(this.baseUrl).host.toLowerCase();
+    if (refHost === ownHost) return;
+    const named = this.site?.name ?? this.baseUrl;
+    const other = siteForBaseUrl(`https://${refHost}`);
+    throw new McpToolError(
+      `The URL "${original}" belongs to ${other?.name ?? refHost}, but you asked for ${named}.`,
+      {
+        hint: other
+          ? `Pass site: "${other.key}" to read it, or give a slug/id from ${named}.`
+          : `Pass a URL on ${ownHost}, or a slug/id from ${named}.`,
+      },
+    );
   }
 
   private toSlug(ref: string): string {

@@ -247,3 +247,27 @@ describe('global fetch binding', () => {
     expect(receiver).toBe(globalThis);
   });
 });
+
+describe('getPost with a full URL from another site', () => {
+  it('refuses rather than silently reading the same slug on the named site', async () => {
+    // Slugs collide across these sites constantly, so the old behaviour —
+    // reduce the URL to its slug, query whichever site was named — returned a
+    // different city's article with no indication anything was wrong.
+    const { impl, calls } = stubFetch(jsonResponse([]));
+    const denver = new OtcClient({ site: 'denver', fetchImpl: impl });
+    await expect(
+      denver.getPost('https://atlantaonthecheap.com/2026/07/free-museum-day/'),
+    ).rejects.toThrow(/belongs to Atlanta on the Cheap.*Mile High on the Cheap/is);
+    // No request at all: the mismatch is caught before any lookup.
+    expect(calls).toEqual([]);
+  });
+
+  it('still accepts a URL on the site being read', async () => {
+    const { impl, calls } = stubFetch(jsonResponse([{ id: 7, slug: 'free-museum-day' }]));
+    const denver = new OtcClient({ site: 'denver', fetchImpl: impl });
+    const post = await denver.getPost('https://www.milehighonthecheap.com/2026/07/free-museum-day/');
+    expect(post.id).toBe(7);
+    expect(calls[0]).toContain('slug=free-museum-day');
+  });
+});
+
