@@ -12,6 +12,7 @@ import {
   DEFAULT_SITE_KEY,
   requireSite,
   siteForBaseUrl,
+  siteHostKey,
   type OtcSite,
 } from './sites.js';
 
@@ -262,15 +263,19 @@ export class OtcClient {
    */
   private assertSameSite(ref: string, original: string): void {
     if (!/^https?:\/\//i.test(ref)) return;
-    let refHost: string;
-    try {
-      refHost = new URL(ref).host.toLowerCase();
-    } catch {
-      return; // unparseable: fall through to the existing slug handling
-    }
-    const ownHost = new URL(this.baseUrl).host.toLowerCase();
-    if (refHost === ownHost) return;
+    // siteHostKey, not a raw host comparison: these sites all serve both the
+    // bare and the `www.` host, and SITES records only one form each. Comparing
+    // raw hosts rejected the other form of the SAME site — and then named it as
+    // the other site, because siteForBaseUrl below DOES strip `www.`, so the
+    // message read "belongs to Mile High on the Cheap, but you asked for Mile
+    // High on the Cheap". Both sides normalize through the one helper now.
+    const refHost = siteHostKey(ref);
+    if (!refHost) return; // unparseable: fall through to the existing slug handling
+    if (refHost === siteHostKey(this.baseUrl)) return;
     const named = this.site?.name ?? this.baseUrl;
+    // Show the canonical host from SITES, not the stripped comparison key —
+    // "pass a URL on www.milehighonthecheap.com" is the form we actually record.
+    const ownHost = new URL(this.baseUrl).host;
     const other = siteForBaseUrl(`https://${refHost}`);
     throw new McpToolError(
       `The URL "${original}" belongs to ${other?.name ?? refHost}, but you asked for ${named}.`,
