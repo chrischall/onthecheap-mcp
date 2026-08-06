@@ -5,6 +5,3 @@ coverage/
 *.skill
 *.mcpb
 
-# wrangler local secrets
-.dev.vars
-.wrangler/

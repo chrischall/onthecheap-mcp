@@ -124,7 +124,7 @@ export function requireSite(keyOrAlias: string): OtcSite {
  * here rather than queried.
  *
  * Gated in one place rather than at each call site so the stdio server and the
- * Worker cannot drift apart on it.
+ * skill cannot drift apart on it.
  */
 export function requireLocalSite(keyOrAlias: string): OtcSite {
   const site = requireSite(keyOrAlias);

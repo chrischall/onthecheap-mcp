@@ -223,7 +223,7 @@ describe('global fetch binding', () => {
   it('invokes the global fetch with globalThis as its receiver', async () => {
     // workerd throws "Illegal invocation: function called with incorrect
     // `this` reference" unless fetch is called with globalThis as its
-    // receiver, which broke every request from the deployed connector.
+    // receiver, which broke every request from a deployed server.
     //
     // Neither Node NOR the Workers test pool enforces that rule — a detached
     // `globalThis.fetch` resolves fine in both (verified: the pool returns
