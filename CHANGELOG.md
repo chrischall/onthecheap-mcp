@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.3](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.2...v0.3.3) (2026-08-07)
+
+
+### Bug Fixes
+
+* **connector:** finish the retirement sweep ([#36](https://github.com/chrischall/onthecheap-mcp/issues/36)) ([d52026d](https://github.com/chrischall/onthecheap-mcp/commit/d52026d187a585ca1222fcc0766fab841e807d39))
+
+
+### Refactor
+
+* **connector:** retire the standalone Cloudflare Worker connector ([#33](https://github.com/chrischall/onthecheap-mcp/issues/33)) ([9acc48f](https://github.com/chrischall/onthecheap-mcp/commit/9acc48fb256d40d1717740f51bbfcb5e1b7d7e66))
+
 ## [0.3.2](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.1...v0.3.2) (2026-07-27)
 
 
