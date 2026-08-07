@@ -1,1 +1,0 @@
-{"clientId":"ADKCf2BpDyblNhw-","redirectUris":["https://claude.ai/api/mcp/auth_callback"],"clientName":"diag","grantTypes":["authorization_code","refresh_token"],"responseTypes":["code"],"registrationDate":1784491448,"tokenEndpointAuthMethod":"none"}
