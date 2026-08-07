@@ -5,6 +5,6 @@ coverage/
 *.skill
 *.mcpb
 
-# wrangler local secrets
-.dev.vars
+# Local Miniflare/wrangler dev state — holds OAuth grant records; never commit.
 .wrangler/
+.dev.vars

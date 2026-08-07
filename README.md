@@ -101,28 +101,11 @@ complete schedule.
 None. The city is a per-call `site` argument, not an environment variable, so
 there is nothing to set up before use.
 
-## Hosted connector (optional)
-
-The same tools can run as a Cloudflare Worker, making them reachable from
-claude.ai on the web, desktop and mobile rather than only from a machine with
-this package installed. Because the sites are public, connecting asks for
-nothing — the login page is a single "Authorize" button and no credentials are
-stored. One Worker serves one city.
-
-Releases deploy it automatically — the `deploy-connector` job in
-`release-please.yml` ships the tagged ref via the shared `chrischall/workflows`
-reusable workflow. Any ref can also be deployed on demand from
-**Actions → deploy-connector → Run workflow**. First-time setup for your own
-Cloudflare account: see
-[`docs/DEPLOY-CONNECTOR.md`](docs/DEPLOY-CONNECTOR.md).
-
 ## Development
 
 ```bash
 npm install
-npm test              # node + Workers-runtime suites
-npm run test:node     # node suite only
-npm run worker:test   # Workers-runtime suite only
+npm test
 npm run build
 ```
 
