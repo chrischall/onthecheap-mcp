@@ -1,6 +1,6 @@
 {
   "name": "onthecheap-mcp",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "mcpName": "io.github.chrischall/onthecheap-mcp",
   "description": "On the Cheap MCP server for Claude — developed and maintained by AI (Claude Code)",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
