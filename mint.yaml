@@ -1,0 +1,36 @@
+version: 1
+name: On the Cheap
+slug: onthecheap
+summary: >-
+  Find free and cheap things to do in 14 US cities — daily event listings,
+  deals and local guides from the On the Cheap network
+env:
+  - name: OTC_BASE_URL
+    required: false
+    help: >-
+      Overrides the upstream API base URL. Leave unset for the default; if you
+      change it, update egress.allow to match.
+  - name: OTC_SITE
+    required: false
+    help: >-
+      Which "On the Cheap" city site to read (each city is its own WordPress
+      site, e.g. charlotte, atlanta, chicago). Alternatively set OTC_BASE_URL to
+      a site URL directly.
+egress:
+  allow:
+    # Only hosts the SERVER process actually fetches. Hosts that appear
+    # solely in a URL this server BUILDS and returns are excluded.
+    - atlantaonthecheap.com
+    - chicagoonthecheap.com
+    - columbusonthecheap.com
+    - greaterseattleonthecheap.com
+    - kansascityonthecheap.com
+    - livingonthecheap.com
+    - miamionthecheap.com
+    - orlandoonthecheap.com
+    - portlandlivingonthecheap.com
+    - rvaonthecheap.com
+    - southernmaineonthecheap.com
+    - triangleonthecheap.com
+    - www.charlotteonthecheap.com
+    - www.milehighonthecheap.com
