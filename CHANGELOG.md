@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/chrischall/onthecheap-mcp/compare/v0.4.0...v0.4.1) (2026-09-04)
+
+
+### Documentation
+
+* **skill:** document the view response shape on otc_search_posts ([#68](https://github.com/chrischall/onthecheap-mcp/issues/68)) ([c473c54](https://github.com/chrischall/onthecheap-mcp/commit/c473c547079ad71cef30b49b1bcd2dfce7774bc5))
+
 ## [0.4.0](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.3...v0.4.0) (2026-09-04)
 
 
