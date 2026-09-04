@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { decodeEntities } from '../normalize.js';
 import { SITES, SITE_ARG_DESCRIPTION, requireSite } from '../sites.js';
@@ -27,7 +27,7 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
     async ({ site: siteKey }) => {
       const resolved = requireSite(siteKey);
       const terms = await registry.for(resolved.key).listTerms('categories');
-      return textResult({
+      return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         count: terms.length,
@@ -55,7 +55,7 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
     async ({ site: siteKey }) => {
       const resolved = requireSite(siteKey);
       const terms = await registry.for(resolved.key).listTerms('locations');
-      return textResult({
+      return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         count: terms.length,
@@ -83,7 +83,7 @@ export function registerUtilityTools(server: McpServer, registry: OtcRegistry): 
       inputSchema: {},
     },
     async () =>
-      textResult({
+      minifiedResult({
         count: SITES.length,
         note: 'Pass one of these keys as the `site` argument on any other tool.',
         sites: SITES.map((s) => ({
@@ -119,7 +119,7 @@ export function registerUtilityTools(server: McpServer, registry: OtcRegistry): 
     },
     async ({ site: siteKey }) => {
       const resolved = requireSite(siteKey);
-      return textResult({
+      return minifiedResult({
         site_name: resolved.name,
         ...(await registry.for(resolved.key).healthcheck()),
       });
