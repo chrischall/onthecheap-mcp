@@ -15,7 +15,7 @@ const OTC_VIEWS = ['compact', 'full'] as const;
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations, PositiveInt } from '@chrischall/mcp-utils';
+import { toolAnnotations, PositiveInt } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { SITE_ARG_DESCRIPTION, requireSite } from '../sites.js';
 import { compactPost, htmlToText, decodeEntities } from '../normalize.js';
