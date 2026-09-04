@@ -2,7 +2,7 @@
   "name": "onthecheap-mcp",
   "version": "0.3.3",
   "mcpName": "io.github.chrischall/onthecheap-mcp",
-  "description": "On the Cheap MCP server for Claude — developed and maintained by AI (Claude Code)",
+  "description": "On the Cheap MCP server for Claude \u2014 developed and maintained by AI (Claude Code)",
   "author": "Claude Code (AI) <https://www.anthropic.com/claude>",
   "repository": {
     "type": "git",
@@ -39,7 +39,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@chrischall/mcp-utils": "^0.17.1",
+    "@chrischall/mcp-utils": "^0.21.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.4.0",
     "node-html-parser": "^9.0.0",

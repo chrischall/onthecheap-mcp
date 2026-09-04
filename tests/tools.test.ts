@@ -160,10 +160,10 @@ describe('otc_search_posts', () => {
     expect(listPosts.mock.calls[0][0].fields).not.toContain('content');
   });
 
-  it('returns full records when compact is disabled', async () => {
+  it('returns full records on view:"full"', async () => {
     const h = await setup();
     listPosts.mockResolvedValue({ posts: [POST], total: 1, totalPages: 1 });
-    const out = parse(await h.callTool('otc_search_posts', { site: 'charlotte', compact: false }));
+    const out = parse(await h.callTool('otc_search_posts', { site: 'charlotte', view: 'full' }));
     expect(listPosts.mock.calls[0][0].fields).toBeUndefined();
     expect(out.posts[0].content.rendered).toContain('Doors open');
   });

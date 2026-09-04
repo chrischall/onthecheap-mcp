@@ -1,3 +1,18 @@
+import { minifiedResult, resolveView, viewParam } from '@chrischall/mcp-utils';
+
+/**
+ * The rungs this server honours (`@chrischall/mcp-utils`' `view` vocabulary;
+ * `chrischall/workflows` `docs/fleet-conventions.md`, "Response shape").
+ *
+ * Already compact-by-default before this — `args.compact ?? true` — so this is
+ * a rename onto the shared vocabulary. Worth noting what compact does here:
+ * it narrows the WordPress `fields` query param as well as projecting the
+ * result, so the cheap rung is cheap on the wire too.
+ *
+ * No `raw`: `full` already returns the untouched records.
+ */
+const OTC_VIEWS = ['compact', 'full'] as const;
+
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { textResult, toolAnnotations, PositiveInt } from '@chrischall/mcp-utils';
@@ -44,10 +59,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
           .boolean()
           .optional()
           .describe('Include retired/expired deals (default false)'),
-        compact: z
-          .boolean()
-          .optional()
-          .describe('Return slim summaries instead of full records (default true)'),
+        view: viewParam(OTC_VIEWS, { note: 'compact returns slim summaries AND asks WordPress for only the fields they use; "full" returns the whole records.' }),
         per_page: z.number().int().min(1).max(100).optional().describe('Results per page (max 100)'),
         page: PositiveInt.optional().describe('1-based page number'),
       },
@@ -55,7 +67,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
     async (args) => {
       const resolved = requireSite(args.site);
       const client = registry.for(resolved.key);
-      const compact = args.compact ?? true;
+      const compact = resolveView(args.view, OTC_VIEWS) === 'compact';
       const result = await client.listPosts({
         search: args.query,
         category: args.category,
@@ -86,7 +98,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
       // Resolved (not hardcoded) so the `expired` flag is right on every site.
       const expiredId = compact ? await client.resolveExpiredCategoryId() : null;
 
-      return textResult({
+      return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         total: result.total,
@@ -126,7 +138,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
       const client = registry.for(resolved.key);
       const record = await client.getPost(post);
       const body = record.content?.rendered ?? '';
-      return textResult({
+      return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         id: record.id,

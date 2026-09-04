@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { textResult, toolAnnotations } from '@chrischall/mcp-utils';
+import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { SITE_ARG_DESCRIPTION, requireLocalSite } from '../sites.js';
 
@@ -44,7 +44,7 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
       const day = await client.getEventsForDate(target);
       const events = free_only ? day.events.filter((e) => e.is_free) : day.events;
 
-      return textResult({
+      return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         date: day.date ?? target,
@@ -89,7 +89,7 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
       const target = month ?? new Date().toISOString().slice(0, 7);
       const days = await client.getEventsForMonth(target);
 
-      return textResult({
+      return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         month: target,
