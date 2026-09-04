@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.3...v0.4.0) (2026-09-04)
+
+
+### Features
+
+* **tools:** adopt the fleet `view` vocabulary ([#63](https://github.com/chrischall/onthecheap-mcp/issues/63)) ([77473f1](https://github.com/chrischall/onthecheap-mcp/commit/77473f13fa3fb767b0a6a6ea46fffb1a64d2813e))
+
+
+### Bug Fixes
+
+* **build:** restore the literal em dash in the package description ([#66](https://github.com/chrischall/onthecheap-mcp/issues/66)) ([0d37058](https://github.com/chrischall/onthecheap-mcp/commit/0d37058c536d28b2087c2977dd420935cbb9576f))
+
+
+### Refactor
+
+* **tools:** drop the unused textResult import from posts.ts ([#67](https://github.com/chrischall/onthecheap-mcp/issues/67)) ([ed07fe4](https://github.com/chrischall/onthecheap-mcp/commit/ed07fe437fc03796bbf7f97724fee326cd1cf673))
+
 ## [0.3.3](https://github.com/chrischall/onthecheap-mcp/compare/v0.3.2...v0.3.3) (2026-08-09)
 
 
