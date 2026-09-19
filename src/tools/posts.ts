@@ -14,7 +14,7 @@ import { minifiedResult, resolveView, viewParam } from '@chrischall/mcp-utils';
 const OTC_VIEWS = ['compact', 'full'] as const;
 
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { toolAnnotations, PositiveInt } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { SITE_ARG_DESCRIPTION, requireSite } from '../sites.js';
@@ -47,7 +47,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         site,
         query: z.string().optional().describe('Full-text search, e.g. "free museum day"'),
         category: PositiveInt.optional().describe('Category id from otc_list_categories, for this same site'),
@@ -62,7 +62,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         view: viewParam(OTC_VIEWS, { note: 'compact returns slim summaries AND asks WordPress for only the fields they use; "full" returns the whole records.' }),
         per_page: z.number().int().min(1).max(100).optional().describe('Results per page (max 100)'),
         page: PositiveInt.optional().describe('1-based page number'),
-      },
+      }),
     },
     async (args) => {
       const resolved = requireSite(args.site);
@@ -124,14 +124,14 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         site,
         post: z.string().min(1).describe('Post id, slug, or full article URL'),
         format: z
           .enum(['text', 'html'])
           .optional()
           .describe('Body format: readable text (default) or raw HTML'),
-      },
+      }),
     },
     async ({ site: siteKey, post, format }) => {
       const resolved = requireSite(siteKey);

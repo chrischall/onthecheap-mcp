@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { decodeEntities } from '../normalize.js';
@@ -22,7 +22,7 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: { site },
+      inputSchema: z.object({ site }),
     },
     async ({ site: siteKey }) => {
       const resolved = requireSite(siteKey);
@@ -50,7 +50,7 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: { site },
+      inputSchema: z.object({ site }),
     },
     async ({ site: siteKey }) => {
       const resolved = requireSite(siteKey);
@@ -80,7 +80,7 @@ export function registerUtilityTools(server: McpServer, registry: OtcRegistry): 
         idempotent: true,
         openWorld: false,
       }),
-      inputSchema: {},
+      inputSchema: z.object({}),
     },
     async () =>
       minifiedResult({
@@ -115,7 +115,7 @@ export function registerUtilityTools(server: McpServer, registry: OtcRegistry): 
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: { site: z.string().min(1).describe(SITE_ARG_DESCRIPTION) },
+      inputSchema: z.object({ site: z.string().min(1).describe(SITE_ARG_DESCRIPTION) }),
     },
     async ({ site: siteKey }) => {
       const resolved = requireSite(siteKey);
