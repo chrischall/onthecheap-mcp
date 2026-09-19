@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/chrischall/onthecheap-mcp/compare/v0.4.3...v1.0.0) (2026-09-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** migrate server to SDK v2 ([#84](https://github.com/chrischall/onthecheap-mcp/issues/84))
+
+### Features
+
+* **mcp:** migrate server to SDK v2 ([#84](https://github.com/chrischall/onthecheap-mcp/issues/84)) ([77810e7](https://github.com/chrischall/onthecheap-mcp/commit/77810e7e2bcc1c09ff21c6a79263c1bba9d11952))
+
 ## [0.4.3](https://github.com/chrischall/onthecheap-mcp/compare/v0.4.2...v0.4.3) (2026-09-13)
 
 
