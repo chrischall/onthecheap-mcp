@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { SITE_ARG_DESCRIPTION, requireLocalSite } from '../sites.js';
@@ -27,7 +27,7 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         site,
         date: z
           .string()
@@ -35,7 +35,7 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
           .optional()
           .describe('Day to list, as ISO YYYY-MM-DD. Defaults to today.'),
         free_only: z.boolean().optional().describe('Only listings marked FREE'),
-      },
+      }),
     },
     async ({ site: siteKey, date, free_only }) => {
       const resolved = requireLocalSite(siteKey);
@@ -74,14 +74,14 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
         idempotent: true,
         openWorld: true,
       }),
-      inputSchema: {
+      inputSchema: z.object({
         site,
         month: z
           .string()
           .regex(/^\d{4}-\d{2}$/, 'Expected an ISO month, e.g. 2026-08')
           .optional()
           .describe('Month to summarise, as ISO YYYY-MM. Defaults to the current month.'),
-      },
+      }),
     },
     async ({ site: siteKey, month }) => {
       const resolved = requireLocalSite(siteKey);
