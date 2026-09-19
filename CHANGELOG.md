@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/chrischall/onthecheap-mcp/compare/v1.0.0...v1.1.0) (2026-09-19)
+
+
+### Features
+
+* **deps:** take mcp-utils 1.0.0, fixing server/discover ([#87](https://github.com/chrischall/onthecheap-mcp/issues/87)) ([95d4e9b](https://github.com/chrischall/onthecheap-mcp/commit/95d4e9b84f25d9152cbea8480f28e8566ea99b43))
+
 ## [1.0.0](https://github.com/chrischall/onthecheap-mcp/compare/v0.4.3...v1.0.0) (2026-09-19)
 
 
