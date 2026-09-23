@@ -37,11 +37,11 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
         free_only: z.boolean().optional().describe('Only listings marked FREE'),
       }),
     },
-    async ({ site: siteKey, date, free_only }) => {
+    async ({ site: siteKey, date, free_only }, ctx) => {
       const resolved = requireLocalSite(siteKey);
       const client = registry.for(resolved.key);
       const target = date ?? siteToday(resolved);
-      const day = await client.getEventsForDate(target);
+      const day = await client.getEventsForDate(target, ctx.mcpReq.signal);
       const events = free_only ? day.events.filter((e) => e.is_free) : day.events;
 
       return minifiedResult({
@@ -83,11 +83,11 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
           .describe('Month to summarise, as ISO YYYY-MM. Defaults to the current month in the city’s own time zone.'),
       }),
     },
-    async ({ site: siteKey, month }) => {
+    async ({ site: siteKey, month }, ctx) => {
       const resolved = requireLocalSite(siteKey);
       const client = registry.for(resolved.key);
       const target = month ?? siteToday(resolved).slice(0, 7);
-      const days = await client.getEventsForMonth(target);
+      const days = await client.getEventsForMonth(target, ctx.mcpReq.signal);
 
       return minifiedResult({
         site: resolved.key,
