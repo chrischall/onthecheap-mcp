@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.1...v1.1.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* use each city's time zone for event dates, bound stalled requests, and clean up article text ([#94](https://github.com/chrischall/onthecheap-mcp/issues/94)) ([d46636f](https://github.com/chrischall/onthecheap-mcp/commit/d46636f6c674db014679b79bdfc22b6df80213a4))
+
 ## [1.1.1](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.0...v1.1.1) (2026-09-23)
 
 
