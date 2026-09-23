@@ -356,8 +356,28 @@ describe('stalled and cancelled requests', () => {
       return jsonResponse({ name: 'x' });
     }) as unknown as typeof fetch;
     const c = new OtcClient({ fetchImpl: impl });
+    const calls = [
+      () => c.listPosts({}, controller.signal),
+      () => c.getPost('1', controller.signal),
+      () => c.listTerms('categories', 100, controller.signal),
+      () => c.getEventsForDate('2026-07-25', controller.signal),
+      () => c.getEventsForMonth('2026-07', controller.signal),
+      () => c.resolveExpiredCategoryId(controller.signal),
+    ];
+    for (const call of calls) await call();
+    // Every read sent a signal, and none of them had fired yet…
+    expect(signals.length).toBeGreaterThanOrEqual(calls.length);
+    expect(signals.every((s) => s instanceof AbortSignal && !s.aborted)).toBe(true);
+    // …but each one is wired to the caller's: cancelling the request fires them all.
     controller.abort();
-    // An already-cancelled call must not reach the network at all.
+    expect(signals.every((s) => s?.aborted)).toBe(true);
+  });
+
+  it('never reaches the network for an already-cancelled call', async () => {
+    const controller = new AbortController();
+    const { impl } = stubFetch(jsonResponse([]));
+    const c = new OtcClient({ fetchImpl: impl });
+    controller.abort();
     for (const call of [
       () => c.listPosts({}, controller.signal),
       () => c.getPost('1', controller.signal),
@@ -368,7 +388,7 @@ describe('stalled and cancelled requests', () => {
     ]) {
       await expect(call()).rejects.toThrow(/cancel/i);
     }
-    expect(signals.every((s) => s?.aborted)).toBe(true);
+    expect(impl).not.toHaveBeenCalled();
   });
 
   it('always sends a signal, so even an uncancelled call is bounded', async () => {
