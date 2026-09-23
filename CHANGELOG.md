@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.0...v1.1.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** require zod ^4.6.5 to match @chrischall/mcp-utils 2.4.0 ([#93](https://github.com/chrischall/onthecheap-mcp/issues/93)) ([2be7d4f](https://github.com/chrischall/onthecheap-mcp/commit/2be7d4f24314e653ad628ec4c6ba76173804c388))
+* **deps:** upgrade @chrischall/mcp-utils to 2.4.0 and @fetchproxy/* to 3.2.0 ([#91](https://github.com/chrischall/onthecheap-mcp/issues/91)) ([9a84904](https://github.com/chrischall/onthecheap-mcp/commit/9a8490402f0393db0c753d13745af67de9984fc0))
+
 ## [1.1.0](https://github.com/chrischall/onthecheap-mcp/compare/v1.0.0...v1.1.0) (2026-09-19)
 
 
