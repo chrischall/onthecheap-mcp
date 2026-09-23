@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/server';
 import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
-import { SITE_ARG_DESCRIPTION, requireLocalSite } from '../sites.js';
+import { SITE_ARG_DESCRIPTION, requireLocalSite, siteToday } from '../sites.js';
 
 export function registerEventTools(server: McpServer, registry: OtcRegistry): void {
   // The events tools are registered unconditionally, then refuse the national
@@ -17,7 +17,7 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
       description:
         'List everything happening in an "on the Cheap" city on a given date, from that site’s events calendar — ' +
         'each with its time, price (most are free) and venue. ' +
-        'Pass the `site` key for the city (see otc_list_sites) and an ISO `date` (YYYY-MM-DD); the date defaults to today. ' +
+        'Pass the `site` key for the city (see otc_list_sites) and an ISO `date` (YYYY-MM-DD); the date defaults to today in that city. ' +
         'Set `free_only` to keep just the no-cost listings. ' +
         'The national hub has no local calendar and is not a valid `site` here. ' +
         'Use otc_get_post on a listing\'s url for the full write-up. Read-only.',
@@ -33,15 +33,15 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
           .string()
           .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected an ISO date, e.g. 2026-07-25')
           .optional()
-          .describe('Day to list, as ISO YYYY-MM-DD. Defaults to today.'),
+          .describe('Day to list, as ISO YYYY-MM-DD. Defaults to today in the city’s own time zone.'),
         free_only: z.boolean().optional().describe('Only listings marked FREE'),
       }),
     },
-    async ({ site: siteKey, date, free_only }) => {
+    async ({ site: siteKey, date, free_only }, ctx) => {
       const resolved = requireLocalSite(siteKey);
       const client = registry.for(resolved.key);
-      const target = date ?? new Date().toISOString().slice(0, 10);
-      const day = await client.getEventsForDate(target);
+      const target = date ?? siteToday(resolved);
+      const day = await client.getEventsForDate(target, ctx.mcpReq.signal);
       const events = free_only ? day.events.filter((e) => e.is_free) : day.events;
 
       return minifiedResult({
@@ -80,14 +80,14 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
           .string()
           .regex(/^\d{4}-\d{2}$/, 'Expected an ISO month, e.g. 2026-08')
           .optional()
-          .describe('Month to summarise, as ISO YYYY-MM. Defaults to the current month.'),
+          .describe('Month to summarise, as ISO YYYY-MM. Defaults to the current month in the city’s own time zone.'),
       }),
     },
-    async ({ site: siteKey, month }) => {
+    async ({ site: siteKey, month }, ctx) => {
       const resolved = requireLocalSite(siteKey);
       const client = registry.for(resolved.key);
-      const target = month ?? new Date().toISOString().slice(0, 7);
-      const days = await client.getEventsForMonth(target);
+      const target = month ?? siteToday(resolved).slice(0, 7);
+      const days = await client.getEventsForMonth(target, ctx.mcpReq.signal);
 
       return minifiedResult({
         site: resolved.key,

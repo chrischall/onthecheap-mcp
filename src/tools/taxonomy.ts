@@ -24,9 +24,9 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
       }),
       inputSchema: z.object({ site }),
     },
-    async ({ site: siteKey }) => {
+    async ({ site: siteKey }, ctx) => {
       const resolved = requireSite(siteKey);
-      const terms = await registry.for(resolved.key).listTerms('categories');
+      const terms = await registry.for(resolved.key).listTerms('categories', undefined, ctx.mcpReq.signal);
       return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
@@ -52,9 +52,9 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
       }),
       inputSchema: z.object({ site }),
     },
-    async ({ site: siteKey }) => {
+    async ({ site: siteKey }, ctx) => {
       const resolved = requireSite(siteKey);
-      const terms = await registry.for(resolved.key).listTerms('locations');
+      const terms = await registry.for(resolved.key).listTerms('locations', undefined, ctx.mcpReq.signal);
       return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
@@ -117,11 +117,11 @@ export function registerUtilityTools(server: McpServer, registry: OtcRegistry): 
       }),
       inputSchema: z.object({ site: z.string().min(1).describe(SITE_ARG_DESCRIPTION) }),
     },
-    async ({ site: siteKey }) => {
+    async ({ site: siteKey }, ctx) => {
       const resolved = requireSite(siteKey);
       return minifiedResult({
         site_name: resolved.name,
-        ...(await registry.for(resolved.key).healthcheck()),
+        ...(await registry.for(resolved.key).healthcheck(ctx.mcpReq.signal)),
       });
     },
   );

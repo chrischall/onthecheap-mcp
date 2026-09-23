@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { McpToolError } from '@chrischall/mcp-utils';
 import { OtcClient } from '../src/client.js';
 
 /** The `expired` category id this fixture site reports for the slug lookup. */
@@ -300,3 +301,88 @@ describe('getPost with a full URL from another site', () => {
   });
 });
 
+
+/**
+ * A fetch that never answers on its own — the stalled-socket case (a WAF
+ * tarpit, an overloaded WordPress). It settles only when its signal aborts,
+ * exactly as the real fetch does.
+ */
+function stalledFetch() {
+  const seen: (AbortSignal | undefined)[] = [];
+  const impl = vi.fn(
+    (_input: unknown, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal ?? undefined;
+        seen.push(signal);
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+      }),
+  );
+  return { impl: impl as unknown as typeof fetch, seen };
+}
+
+describe('stalled and cancelled requests', () => {
+  it('gives up on a site that stops answering, with a retry hint', async () => {
+    const { impl } = stalledFetch();
+    const c = new OtcClient({ fetchImpl: impl, timeoutMs: 20 });
+    const err: any = await c.getPost('123').catch((e) => e);
+    expect(err).toBeInstanceOf(McpToolError);
+    expect(err.message).toMatch(/did not respond within/i);
+    expect(err.hint).toMatch(/retry/i);
+  });
+
+  it('aborts the in-flight request when the caller cancels', async () => {
+    const { impl, seen } = stalledFetch();
+    const c = new OtcClient({ fetchImpl: impl, timeoutMs: 60_000 });
+    const controller = new AbortController();
+    const pending = c.getEventsForDate('2026-07-25', controller.signal).catch((e) => e);
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    controller.abort();
+    const err: any = await pending;
+    expect(seen[0]?.aborted).toBe(true);
+    expect(err).toBeInstanceOf(McpToolError);
+    expect(err.message).toMatch(/cancel/i);
+  });
+
+  it('threads the caller’s signal through every read', async () => {
+    const controller = new AbortController();
+    const signals: (AbortSignal | undefined)[] = [];
+    const impl = vi.fn(async (input: any, init?: RequestInit) => {
+      signals.push(init?.signal ?? undefined);
+      const url = String(input);
+      if (url.includes('/events/')) return new Response('<html></html>', { headers: { 'content-type': 'text/html' } });
+      if (url.includes('/categories') || url.includes('/tags') || url.includes('/locations')) return jsonResponse([]);
+      if (url.includes('/posts/')) return jsonResponse({ id: 1 });
+      if (url.includes('/posts')) return jsonResponse([{ id: 1 }]);
+      return jsonResponse({ name: 'x' });
+    }) as unknown as typeof fetch;
+    const c = new OtcClient({ fetchImpl: impl });
+    controller.abort();
+    // An already-cancelled call must not reach the network at all.
+    for (const call of [
+      () => c.listPosts({}, controller.signal),
+      () => c.getPost('1', controller.signal),
+      () => c.listTerms('categories', 100, controller.signal),
+      () => c.getEventsForDate('2026-07-25', controller.signal),
+      () => c.getEventsForMonth('2026-07', controller.signal),
+      () => c.resolveExpiredCategoryId(controller.signal),
+    ]) {
+      await expect(call()).rejects.toThrow(/cancel/i);
+    }
+    expect(signals.every((s) => s?.aborted)).toBe(true);
+  });
+
+  it('always sends a signal, so even an uncancelled call is bounded', async () => {
+    const { impl, calls } = stubFetch(jsonResponse({ id: 1 }));
+    const spy = impl as unknown as ReturnType<typeof vi.fn>;
+    await client(impl).getPost('1');
+    expect(calls).toHaveLength(1);
+    expect(spy.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('lets healthcheck report a stalled site as not-ok instead of hanging', async () => {
+    const { impl } = stalledFetch();
+    const health = await new OtcClient({ fetchImpl: impl, timeoutMs: 20 }).healthcheck();
+    expect(health.ok).toBe(false);
+    expect(health.error).toMatch(/did not respond within/i);
+  });
+});

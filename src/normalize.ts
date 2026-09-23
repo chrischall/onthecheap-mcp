@@ -1,4 +1,4 @@
-import { parse } from 'node-html-parser';
+import { parse, NodeType, type HTMLElement, type Node, type TextNode } from 'node-html-parser';
 import type { WpPost } from './client.js';
 
 /**
@@ -13,9 +13,49 @@ export function decodeEntities(value: string | undefined | null): string {
   return parse(value).textContent;
 }
 
-/** Strips markup, decodes entities, and collapses whitespace. */
+/** Elements whose content is code or data, never readable article text. */
+const NON_TEXT_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'IFRAME', 'SVG']);
+
+/**
+ * Elements that start a new line when rendered. Their boundaries become a word
+ * break; inline elements (`<b>`, `<a>`, …) do not, so "<b>F</b>ree" stays one
+ * word.
+ */
+const BREAK_TAGS = new Set([
+  'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'BR', 'DD', 'DIV', 'DL', 'DT',
+  'FIGCAPTION', 'FIGURE', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER',
+  'HR', 'LI', 'MAIN', 'NAV', 'OL', 'P', 'PRE', 'SECTION', 'TABLE', 'TD', 'TH',
+  'TR', 'UL',
+]);
+
+function collectText(node: Node, out: string[]): void {
+  if (node.nodeType === NodeType.TEXT_NODE) {
+    out.push((node as TextNode).text); // `.text` is entity-decoded
+    return;
+  }
+  if (node.nodeType !== NodeType.ELEMENT_NODE) return; // comments
+  const tag = (node as HTMLElement).tagName ?? '';
+  if (NON_TEXT_TAGS.has(tag)) return;
+  const breaks = BREAK_TAGS.has(tag);
+  if (breaks) out.push(' ');
+  for (const child of node.childNodes) collectText(child, out);
+  if (breaks) out.push(' ');
+}
+
+/**
+ * Strips markup, decodes entities, and collapses whitespace.
+ *
+ * Not plain `textContent`: that glues adjacent blocks into one word
+ * ("<p>One</p><p>Two</p>" → "OneTwo") and surfaces inline `<script>`/`<style>`
+ * /JSON-LD as if it were article text. Instead, code-bearing elements are
+ * skipped and block/`<br>` boundaries become word breaks, while inline markup
+ * is left joined so a word split across tags stays whole.
+ */
 export function htmlToText(html: string | undefined | null, limit?: number): string {
-  const text = decodeEntities(html).replace(/\s+/g, ' ').trim();
+  if (!html) return '';
+  const parts: string[] = [];
+  collectText(parse(html), parts);
+  const text = parts.join('').replace(/\s+/g, ' ').trim();
   if (limit === undefined || text.length <= limit) return text;
   const cut = text.slice(0, limit);
   const boundary = cut.lastIndexOf(' ');

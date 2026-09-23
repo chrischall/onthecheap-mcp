@@ -44,6 +44,37 @@ describe('htmlToText', () => {
   it('does not truncate text already within the limit', () => {
     expect(htmlToText('<p>short</p>', 50)).toBe('short');
   });
+
+  it('keeps adjacent blocks apart instead of gluing their words together', () => {
+    expect(htmlToText('<p>One</p><p>Two</p><div>Three</div><ul><li>Four</li><li>Five</li></ul>')).toBe(
+      'One Two Three Four Five',
+    );
+  });
+
+  it('treats a <br> as a word break, so addresses and hours stay readable', () => {
+    expect(htmlToText('123 Main St<br>Charlotte, NC<br/>Hours: 9&#8211;5')).toBe(
+      '123 Main St Charlotte, NC Hours: 9–5',
+    );
+  });
+
+  it('drops script, style and JSON-LD content rather than surfacing it as article text', () => {
+    expect(
+      htmlToText(
+        '<p>Doors open</p><script>var x=1</script><style>.a{}</style>' +
+          '<script type="application/ld+json">{"@type":"Event"}</script><noscript>enable js</noscript><p>at 10</p>',
+      ),
+    ).toBe('Doors open at 10');
+  });
+
+  it('does not split a word wrapped in inline markup', () => {
+    expect(htmlToText('<p><b>F</b>ree <a href="#">entry</a>, <em>all</em>day</p>')).toBe(
+      'Free entry, allday',
+    );
+  });
+
+  it('decodes named entities the lightweight decoders miss', () => {
+    expect(htmlToText('<p>9&ndash;5 &hellip; caf&eacute;&nbsp;open</p>')).toBe('9–5 … café open');
+  });
 });
 
 describe('compactPost', () => {

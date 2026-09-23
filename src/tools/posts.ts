@@ -64,7 +64,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         page: PositiveInt.optional().describe('1-based page number'),
       }),
     },
-    async (args) => {
+    async (args, ctx) => {
       const resolved = requireSite(args.site);
       const client = registry.for(resolved.key);
       const compact = resolveView(args.view, OTC_VIEWS) === 'compact';
@@ -93,10 +93,10 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
               'jetpack_featured_media_url',
             ]
           : undefined,
-      });
+      }, ctx.mcpReq.signal);
 
       // Resolved (not hardcoded) so the `expired` flag is right on every site.
-      const expiredId = compact ? await client.resolveExpiredCategoryId() : null;
+      const expiredId = compact ? await client.resolveExpiredCategoryId(ctx.mcpReq.signal) : null;
 
       return minifiedResult({
         site: resolved.key,
@@ -133,10 +133,10 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
           .describe('Body format: readable text (default) or raw HTML'),
       }),
     },
-    async ({ site: siteKey, post, format }) => {
+    async ({ site: siteKey, post, format }, ctx) => {
       const resolved = requireSite(siteKey);
       const client = registry.for(resolved.key);
-      const record = await client.getPost(post);
+      const record = await client.getPost(post, ctx.mcpReq.signal);
       const body = record.content?.rendered ?? '';
       return minifiedResult({
         site: resolved.key,

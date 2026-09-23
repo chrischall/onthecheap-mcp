@@ -135,7 +135,7 @@ describe('otc_search_posts', () => {
       }),
     );
 
-    expect(listPosts).toHaveBeenCalledWith(
+    expect(listPosts.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         search: 'free museum',
         category: 13,
@@ -192,7 +192,7 @@ describe('otc_get_post', () => {
     const h = await setup();
     getPost.mockResolvedValue(POST);
     const out = parse(await h.callTool('otc_get_post', { site: 'charlotte', post: 'free-museum' }));
-    expect(getPost).toHaveBeenCalledWith('free-museum');
+    expect(getPost.mock.calls[0][0]).toBe('free-museum');
     expect(out.title).toBe('Free museum day — Mint');
     expect(out.content).toBe('Doors open at 10am.');
   });
@@ -220,7 +220,7 @@ describe('otc_list_events', () => {
     const h = await setup();
     getEventsForDate.mockResolvedValue(DAY);
     const out = parse(await h.callTool('otc_list_events', { site: 'charlotte', date: '2026-07-25' }));
-    expect(getEventsForDate).toHaveBeenCalledWith('2026-07-25');
+    expect(getEventsForDate.mock.calls[0][0]).toBe('2026-07-25');
     expect(out).toMatchObject({ date: '2026-07-25', count: 2, free_count: 1 });
   });
 
@@ -240,6 +240,27 @@ describe('otc_list_events', () => {
     getEventsForDate.mockResolvedValue(DAY);
     await h.callTool('otc_list_events', { site: 'charlotte' });
     expect(getEventsForDate.mock.calls[0][0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  // "Today" is the city's wall-clock date, not UTC's. 02:00Z on 26 July is
+  // still the evening of 25 July on every site in the network; reading the UTC
+  // date there served tomorrow's calendar as today's.
+  it.each([
+    ['charlotte', '2026-07-26T02:00:00Z', '2026-07-25'],
+    ['seattle', '2026-07-26T06:30:00Z', '2026-07-25'],
+    ['denver', '2026-07-26T05:59:00Z', '2026-07-25'],
+    ['charlotte', '2026-07-26T04:00:00Z', '2026-07-26'],
+  ])('defaults "today" to %s’s local date at %s', async (siteKey, now, expected) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date(now));
+      const h = await setup();
+      getEventsForDate.mockResolvedValue({ date: null, events: [] } as any);
+      await h.callTool('otc_list_events', { site: siteKey });
+      expect(getEventsForDate.mock.calls[0][0]).toBe(expected);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -292,6 +313,57 @@ describe('otc_events_month_overview', () => {
     expect(out.days_with_events).toBe(2);
     expect(out.note).toMatch(/preview/i);
   });
+
+  it('defaults to the city’s current month, not UTC’s, on the last evening of a month', async () => {
+    // 03:00Z on 1 August is still 31 July in Portland: the overview must stay
+    // on July rather than jumping a month ahead.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-08-01T03:00:00Z'));
+      const h = await setup();
+      getEventsForMonth.mockResolvedValue([]);
+      const out = parse(await h.callTool('otc_events_month_overview', { site: 'portland' }));
+      expect(getEventsForMonth.mock.calls[0][0]).toBe('2026-07');
+      expect(out.month).toBe('2026-07');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('request cancellation', () => {
+  // Each site-scoped tool must hand the MCP request's abort signal to the
+  // client, so a user cancelling the call actually drops the socket instead of
+  // leaving it pinned open.
+  const CALLS: ReadonlyArray<[string, Record<string, unknown>, () => unknown[]]> = [
+    ['otc_search_posts', {}, () => listPosts.mock.calls[0]],
+    ['otc_get_post', { post: 'free-museum' }, () => getPost.mock.calls[0]],
+    ['otc_list_categories', {}, () => listTerms.mock.calls[0]],
+    ['otc_list_locations', {}, () => listTerms.mock.calls[0]],
+    ['otc_healthcheck', {}, () => healthcheck.mock.calls[0]],
+    ['otc_list_events', { date: '2026-07-25' }, () => getEventsForDate.mock.calls[0]],
+    ['otc_events_month_overview', { month: '2026-08' }, () => getEventsForMonth.mock.calls[0]],
+  ];
+
+  it.each(CALLS)('%s passes the request’s abort signal to the client', async (tool, args, callOf) => {
+    const h = await setup();
+    listPosts.mockResolvedValue({ posts: [], total: 0, totalPages: 0 });
+    getPost.mockResolvedValue(POST);
+    listTerms.mockResolvedValue([]);
+    getEventsForDate.mockResolvedValue({ date: '2026-07-25', events: [] });
+    getEventsForMonth.mockResolvedValue([]);
+    healthcheck.mockResolvedValue({ ok: true, baseUrl: 'https://www.charlotteonthecheap.com' });
+
+    await h.callTool(tool, { ...args, site: 'charlotte' });
+    expect(callOf().at(-1)).toBeInstanceOf(AbortSignal);
+  });
+
+  it('otc_search_posts also bounds the expired-category lookup', async () => {
+    const h = await setup();
+    listPosts.mockResolvedValue({ posts: [], total: 0, totalPages: 0 });
+    await h.callTool('otc_search_posts', { site: 'charlotte' });
+    expect(resolveExpiredCategoryId.mock.calls[0][0]).toBeInstanceOf(AbortSignal);
+  });
 });
 
 describe('taxonomy and health tools', () => {
@@ -299,7 +371,7 @@ describe('taxonomy and health tools', () => {
     const h = await setup();
     listTerms.mockResolvedValue([{ id: 5, name: 'Food &amp; Drink', slug: 'food', count: 10 }]);
     const out = parse(await h.callTool('otc_list_categories', { site: 'charlotte' }));
-    expect(listTerms).toHaveBeenCalledWith('categories');
+    expect(listTerms.mock.calls[0][0]).toBe('categories');
     expect(out.categories[0].name).toBe('Food & Drink');
   });
 
@@ -307,7 +379,7 @@ describe('taxonomy and health tools', () => {
     const h = await setup();
     listTerms.mockResolvedValue([{ id: 6276, name: 'Center City', slug: 'center-city', count: 1158 }]);
     const out = parse(await h.callTool('otc_list_locations', { site: 'charlotte' }));
-    expect(listTerms).toHaveBeenCalledWith('locations');
+    expect(listTerms.mock.calls[0][0]).toBe('locations');
     expect(out.locations[0].slug).toBe('center-city');
   });
 

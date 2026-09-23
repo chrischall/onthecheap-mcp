@@ -29,6 +29,15 @@ import {
  */
 export const EXPIRED_CATEGORY_SLUG = 'expired';
 
+/**
+ * How long one request may take before it is abandoned. A site that accepts
+ * the connection and then stalls (a WAF tarpit, an overloaded WordPress, a slow
+ * calendar render) would otherwise pin the tool call open until the MCP
+ * client's own timeout — and leave healthcheck, which exists to diagnose
+ * exactly that, hanging too.
+ */
+export const DEFAULT_TIMEOUT_MS = 15_000;
+
 export interface ListPostsParams {
   search?: string;
   category?: number;
@@ -80,6 +89,8 @@ export interface OtcClientOptions {
   /** Explicit base URL, overriding `site`. */
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+  /** Per-request timeout; defaults to `DEFAULT_TIMEOUT_MS`. */
+  timeoutMs?: number;
 }
 
 /**
@@ -96,6 +107,7 @@ export interface OtcClientOptions {
 export class OtcClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
   /** The network entry being read, when the base URL matches a known site. */
   readonly site: OtcSite | undefined;
   /** Cached `expired` category id: number when found, null when the site has none. */
@@ -115,6 +127,7 @@ export class OtcClient {
     // wrapper keeps `this` bound to
     // globalThis and still picks up a test spy installed on globalThis.fetch.
     this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
+    this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   private get headers(): Record<string, string> {
@@ -126,11 +139,33 @@ export class OtcClient {
     };
   }
 
-  private async request(url: string): Promise<Response> {
+  /**
+   * Fetches a URL and reads its body, bounded by the client's timeout and by
+   * the caller's `signal` (the MCP request's cancellation), whichever fires
+   * first. The body read shares the signal: a site can stall mid-body as
+   * easily as before the headers.
+   */
+  private async request(url: string, signal?: AbortSignal): Promise<{ res: Response; body: string }> {
+    const timeout = AbortSignal.timeout(this.timeoutMs);
+    const combined = signal ? AbortSignal.any([timeout, signal]) : timeout;
     let res: Response;
+    let body: string;
     try {
-      res = await this.fetchImpl(url, { headers: this.headers });
+      if (signal?.aborted) throw signal.reason;
+      res = await this.fetchImpl(url, { headers: this.headers, signal: combined });
+      body = await res.text();
     } catch (e) {
+      if (signal?.aborted) {
+        throw new McpToolError(`Request to ${this.site?.name ?? this.baseUrl} was cancelled.`, {
+          cause: e,
+        });
+      }
+      if (timeout.aborted) {
+        throw new McpToolError(
+          `${this.site?.name ?? this.baseUrl} did not respond within ${this.timeoutMs / 1000}s.`,
+          { hint: 'The site may be overloaded or briefly unavailable; retry shortly.', cause: e },
+        );
+      }
       throw new McpToolError(
         `Could not reach ${this.baseUrl}: ${e instanceof Error ? e.message : String(e)}`,
         { hint: 'Check network connectivity; the site needs no credentials.' },
@@ -147,7 +182,7 @@ export class OtcClient {
         },
       );
     }
-    return res;
+    return { res, body };
   }
 
   /**
@@ -156,10 +191,13 @@ export class OtcClient {
    * A maintenance or WAF page answers 200 with HTML; parsing it blindly would
    * surface an opaque SyntaxError instead of something a caller can act on.
    */
-  private async getJson<T>(path: string, query?: URLSearchParams): Promise<{ data: T; res: Response }> {
+  private async getJson<T>(
+    path: string,
+    query?: URLSearchParams,
+    signal?: AbortSignal,
+  ): Promise<{ data: T; res: Response }> {
     const qs = query && [...query].length ? `?${query}` : '';
-    const res = await this.request(`${this.baseUrl}${path}${qs}`);
-    const body = await res.text();
+    const { res, body } = await this.request(`${this.baseUrl}${path}${qs}`, signal);
     const contentType = res.headers.get('content-type') ?? '';
     if (!contentType.includes('json')) {
       throw new McpToolError(
@@ -176,8 +214,8 @@ export class OtcClient {
     }
   }
 
-  private async getHtml(path: string): Promise<string> {
-    return (await this.request(`${this.baseUrl}${path}`)).text();
+  private async getHtml(path: string, signal?: AbortSignal): Promise<string> {
+    return (await this.request(`${this.baseUrl}${path}`, signal)).body;
   }
 
   /**
@@ -187,15 +225,15 @@ export class OtcClient {
    * Resolving rather than hardcoding is what makes the exclusion correct on
    * every site in the network — see `EXPIRED_CATEGORY_SLUG`.
    */
-  async resolveExpiredCategoryId(): Promise<number | null> {
+  async resolveExpiredCategoryId(signal?: AbortSignal): Promise<number | null> {
     if (this.expiredCategoryId !== undefined) return this.expiredCategoryId;
     const q = new URLSearchParams({ slug: EXPIRED_CATEGORY_SLUG, _fields: 'id', per_page: '1' });
-    const { data } = await this.getJson<WpTerm[]>('/wp-json/wp/v2/categories', q);
+    const { data } = await this.getJson<WpTerm[]>('/wp-json/wp/v2/categories', q, signal);
     this.expiredCategoryId = Array.isArray(data) && data.length ? data[0].id : null;
     return this.expiredCategoryId;
   }
 
-  async listPosts(params: ListPostsParams): Promise<ListPostsResult> {
+  async listPosts(params: ListPostsParams, signal?: AbortSignal): Promise<ListPostsResult> {
     const q = new URLSearchParams();
     q.set('per_page', String(params.perPage ?? 20));
     if (params.page) q.set('page', String(params.page));
@@ -208,12 +246,12 @@ export class OtcClient {
     if (params.after) q.set('after', `${params.after}T00:00:00`);
     if (params.before) q.set('before', `${params.before}T23:59:59`);
     if (!params.includeExpired) {
-      const expiredId = await this.resolveExpiredCategoryId();
+      const expiredId = await this.resolveExpiredCategoryId(signal);
       if (expiredId !== null) q.set('categories_exclude', String(expiredId));
     }
     if (params.fields?.length) q.set('_fields', params.fields.join(','));
 
-    const { data, res } = await this.getJson<WpPost[]>('/wp-json/wp/v2/posts', q);
+    const { data, res } = await this.getJson<WpPost[]>('/wp-json/wp/v2/posts', q, signal);
     const header = (name: string) => {
       const raw = res.headers.get(name);
       return raw === null ? null : Number(raw);
@@ -222,7 +260,7 @@ export class OtcClient {
   }
 
   /** Looks up a post by numeric id, slug, or full URL. */
-  async getPost(idOrSlugOrUrl: string): Promise<WpPost> {
+  async getPost(idOrSlugOrUrl: string, signal?: AbortSignal): Promise<WpPost> {
     const ref = idOrSlugOrUrl.trim();
 
     // A full URL names its own site. Reducing it to a slug and querying
@@ -234,13 +272,13 @@ export class OtcClient {
     this.assertSameSite(ref, idOrSlugOrUrl);
 
     if (/^\d+$/.test(ref)) {
-      const { data } = await this.getJson<WpPost>(`/wp-json/wp/v2/posts/${ref}`);
+      const { data } = await this.getJson<WpPost>(`/wp-json/wp/v2/posts/${ref}`, undefined, signal);
       return data;
     }
 
     const slug = this.toSlug(ref);
     const q = new URLSearchParams({ slug, per_page: '1' });
-    const { data } = await this.getJson<WpPost[]>('/wp-json/wp/v2/posts', q);
+    const { data } = await this.getJson<WpPost[]>('/wp-json/wp/v2/posts', q, signal);
     if (!data.length) {
       throw new McpToolError(
         `Found no post matching "${idOrSlugOrUrl}" on ${this.site?.name ?? this.baseUrl}.`,
@@ -298,30 +336,34 @@ export class OtcClient {
   }
 
   /** Lists terms of a taxonomy ("categories", "tags" or "locations"). */
-  async listTerms(taxonomy: 'categories' | 'tags' | 'locations', perPage = 100): Promise<WpTerm[]> {
+  async listTerms(
+    taxonomy: 'categories' | 'tags' | 'locations',
+    perPage = 100,
+    signal?: AbortSignal,
+  ): Promise<WpTerm[]> {
     const q = new URLSearchParams({
       per_page: String(perPage),
       orderby: 'count',
       order: 'desc',
       _fields: 'id,name,slug,count',
     });
-    const { data } = await this.getJson<WpTerm[]>(`/wp-json/wp/v2/${taxonomy}`, q);
+    const { data } = await this.getJson<WpTerm[]>(`/wp-json/wp/v2/${taxonomy}`, q, signal);
     return data;
   }
 
   /** Full listings for one day. */
-  async getEventsForDate(isoDate: string): Promise<OtcDay> {
+  async getEventsForDate(isoDate: string, signal?: AbortSignal): Promise<OtcDay> {
     const path = toDatePath(isoDate); // validates before any request is made
-    return parseDayPage(await this.getHtml(`/events/view-date/${path}/`));
+    return parseDayPage(await this.getHtml(`/events/view-date/${path}/`, signal));
   }
 
   /** Per-day summaries for a month; each day's listing is a truncated preview. */
-  async getEventsForMonth(isoMonth: string): Promise<OtcMonthDay[]> {
+  async getEventsForMonth(isoMonth: string, signal?: AbortSignal): Promise<OtcMonthDay[]> {
     const path = toMonthPath(isoMonth);
-    return parseMonthPage(await this.getHtml(`/events/calendar/${path}/`));
+    return parseMonthPage(await this.getHtml(`/events/calendar/${path}/`, signal));
   }
 
-  async healthcheck(): Promise<{
+  async healthcheck(signal?: AbortSignal): Promise<{
     ok: boolean;
     site?: string;
     siteKey?: string;
@@ -329,7 +371,7 @@ export class OtcClient {
     error?: string;
   }> {
     try {
-      const { data } = await this.getJson<{ name?: string }>('/wp-json/');
+      const { data } = await this.getJson<{ name?: string }>('/wp-json/', undefined, signal);
       return { ok: true, site: data.name, siteKey: this.site?.key, baseUrl: this.baseUrl };
     } catch (e) {
       return {
