@@ -241,6 +241,27 @@ describe('otc_list_events', () => {
     await h.callTool('otc_list_events', { site: 'charlotte' });
     expect(getEventsForDate.mock.calls[0][0]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  // "Today" is the city's wall-clock date, not UTC's. 02:00Z on 26 July is
+  // still the evening of 25 July on every site in the network; reading the UTC
+  // date there served tomorrow's calendar as today's.
+  it.each([
+    ['charlotte', '2026-07-26T02:00:00Z', '2026-07-25'],
+    ['seattle', '2026-07-26T06:30:00Z', '2026-07-25'],
+    ['denver', '2026-07-26T05:59:00Z', '2026-07-25'],
+    ['charlotte', '2026-07-26T04:00:00Z', '2026-07-26'],
+  ])('defaults "today" to %s’s local date at %s', async (siteKey, now, expected) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date(now));
+      const h = await setup();
+      getEventsForDate.mockResolvedValue({ date: null, events: [] } as any);
+      await h.callTool('otc_list_events', { site: siteKey });
+      expect(getEventsForDate.mock.calls[0][0]).toBe(expected);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('the national hub', () => {
@@ -291,6 +312,22 @@ describe('otc_events_month_overview', () => {
     expect(out.total_events).toBe(28);
     expect(out.days_with_events).toBe(2);
     expect(out.note).toMatch(/preview/i);
+  });
+
+  it('defaults to the city’s current month, not UTC’s, on the last evening of a month', async () => {
+    // 03:00Z on 1 August is still 31 July in Portland: the overview must stay
+    // on July rather than jumping a month ahead.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-08-01T03:00:00Z'));
+      const h = await setup();
+      getEventsForMonth.mockResolvedValue([]);
+      const out = parse(await h.callTool('otc_events_month_overview', { site: 'portland' }));
+      expect(getEventsForMonth.mock.calls[0][0]).toBe('2026-07');
+      expect(out.month).toBe('2026-07');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

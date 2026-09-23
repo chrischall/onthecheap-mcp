@@ -10,6 +10,11 @@ export interface OtcSite {
   area: string;
   baseUrl: string;
   /**
+   * The city's IANA time zone. "Today" and "this month" for an events
+   * calendar mean the city's wall-clock date, not UTC's — see `siteToday`.
+   */
+  timeZone: string;
+  /**
    * True for the national hub, which publishes country-wide deals rather than
    * a local events calendar.
    */
@@ -32,20 +37,20 @@ export interface OtcSite {
  * `OtcClient.resolveExpiredCategoryId`.
  */
 export const SITES: readonly OtcSite[] = [
-  { key: 'charlotte', name: 'Charlotte On The Cheap', area: 'Charlotte, NC', baseUrl: 'https://www.charlotteonthecheap.com' },
-  { key: 'denver', name: 'Mile High on the Cheap', area: 'Denver, CO', baseUrl: 'https://www.milehighonthecheap.com' },
-  { key: 'atlanta', name: 'Atlanta on the Cheap', area: 'Atlanta, GA', baseUrl: 'https://atlantaonthecheap.com' },
-  { key: 'chicago', name: 'Chicago on the Cheap', area: 'Chicago, IL', baseUrl: 'https://chicagoonthecheap.com' },
-  { key: 'columbus', name: 'Columbus on the Cheap', area: 'Columbus, OH', baseUrl: 'https://columbusonthecheap.com' },
-  { key: 'seattle', name: 'Greater Seattle on the Cheap', area: 'the Seattle–Tacoma metro area', baseUrl: 'https://greaterseattleonthecheap.com' },
-  { key: 'kansascity', name: 'Kansas City on the Cheap', area: 'Kansas City', baseUrl: 'https://kansascityonthecheap.com' },
-  { key: 'miami', name: 'South Florida on the Cheap', area: 'Miami, Broward and Palm Beach, FL', baseUrl: 'https://miamionthecheap.com' },
-  { key: 'orlando', name: 'Orlando on the Cheap', area: 'Orlando, FL', baseUrl: 'https://orlandoonthecheap.com' },
-  { key: 'portland', name: 'Portland Living on the Cheap', area: 'Portland, OR', baseUrl: 'https://portlandlivingonthecheap.com' },
-  { key: 'richmond', name: 'RVA on the Cheap', area: 'Richmond, VA', baseUrl: 'https://rvaonthecheap.com' },
-  { key: 'southernmaine', name: 'Southern Maine on the Cheap', area: 'Southern Maine', baseUrl: 'https://southernmaineonthecheap.com' },
-  { key: 'triangle', name: 'Triangle on the Cheap', area: 'Raleigh, Durham and Chapel Hill, NC', baseUrl: 'https://triangleonthecheap.com' },
-  { key: 'national', name: 'Living On The Cheap', area: 'the United States', baseUrl: 'https://livingonthecheap.com', national: true },
+  { key: 'charlotte', name: 'Charlotte On The Cheap', area: 'Charlotte, NC', baseUrl: 'https://www.charlotteonthecheap.com', timeZone: 'America/New_York' },
+  { key: 'denver', name: 'Mile High on the Cheap', area: 'Denver, CO', baseUrl: 'https://www.milehighonthecheap.com', timeZone: 'America/Denver' },
+  { key: 'atlanta', name: 'Atlanta on the Cheap', area: 'Atlanta, GA', baseUrl: 'https://atlantaonthecheap.com', timeZone: 'America/New_York' },
+  { key: 'chicago', name: 'Chicago on the Cheap', area: 'Chicago, IL', baseUrl: 'https://chicagoonthecheap.com', timeZone: 'America/Chicago' },
+  { key: 'columbus', name: 'Columbus on the Cheap', area: 'Columbus, OH', baseUrl: 'https://columbusonthecheap.com', timeZone: 'America/New_York' },
+  { key: 'seattle', name: 'Greater Seattle on the Cheap', area: 'the Seattle–Tacoma metro area', baseUrl: 'https://greaterseattleonthecheap.com', timeZone: 'America/Los_Angeles' },
+  { key: 'kansascity', name: 'Kansas City on the Cheap', area: 'Kansas City', baseUrl: 'https://kansascityonthecheap.com', timeZone: 'America/Chicago' },
+  { key: 'miami', name: 'South Florida on the Cheap', area: 'Miami, Broward and Palm Beach, FL', baseUrl: 'https://miamionthecheap.com', timeZone: 'America/New_York' },
+  { key: 'orlando', name: 'Orlando on the Cheap', area: 'Orlando, FL', baseUrl: 'https://orlandoonthecheap.com', timeZone: 'America/New_York' },
+  { key: 'portland', name: 'Portland Living on the Cheap', area: 'Portland, OR', baseUrl: 'https://portlandlivingonthecheap.com', timeZone: 'America/Los_Angeles' },
+  { key: 'richmond', name: 'RVA on the Cheap', area: 'Richmond, VA', baseUrl: 'https://rvaonthecheap.com', timeZone: 'America/New_York' },
+  { key: 'southernmaine', name: 'Southern Maine on the Cheap', area: 'Southern Maine', baseUrl: 'https://southernmaineonthecheap.com', timeZone: 'America/New_York' },
+  { key: 'triangle', name: 'Triangle on the Cheap', area: 'Raleigh, Durham and Chapel Hill, NC', baseUrl: 'https://triangleonthecheap.com', timeZone: 'America/New_York' },
+  { key: 'national', name: 'Living On The Cheap', area: 'the United States', baseUrl: 'https://livingonthecheap.com', timeZone: 'America/New_York', national: true },
 ];
 
 /**
@@ -162,4 +167,22 @@ export function siteForBaseUrl(baseUrl: string): OtcSite | undefined {
   const host = siteHostKey(baseUrl);
   if (!host) return undefined;
   return SITES.find((s) => siteHostKey(s.baseUrl) === host);
+}
+
+/**
+ * Today's date on the site's own wall clock, as ISO `YYYY-MM-DD`.
+ *
+ * Not `new Date().toISOString()`: that is UTC, and every site in the network
+ * sits four to eight hours behind it, so from early evening onward the UTC
+ * date is already tomorrow and "what's on today" served tomorrow's calendar.
+ * Not the host's local date either — a hosted server runs in UTC. `en-CA`
+ * formats as `YYYY-MM-DD`. Pass `now` to pin the clock.
+ */
+export function siteToday(site: Pick<OtcSite, 'timeZone'>, now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: site.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
 }

@@ -8,6 +8,7 @@ import {
   requireLocalSite,
   siteForBaseUrl,
   siteHostKey,
+  siteToday,
 } from '../src/sites.js';
 
 describe('the site registry', () => {
@@ -132,5 +133,20 @@ describe('siteForBaseUrl', () => {
 
   it('returns undefined for a malformed URL instead of throwing', () => {
     expect(siteForBaseUrl('not a url')).toBeUndefined();
+  });
+});
+
+describe('siteToday', () => {
+  it('gives every site an IANA time zone', () => {
+    for (const s of SITES) {
+      expect(() => new Intl.DateTimeFormat('en-US', { timeZone: s.timeZone })).not.toThrow();
+    }
+  });
+
+  it('reads the date on the city’s wall clock, not UTC', () => {
+    const now = new Date('2026-07-26T02:00:00Z'); // 22:00 EDT, 19:00 PDT on the 25th
+    expect(siteToday(requireSite('charlotte'), now)).toBe('2026-07-25');
+    expect(siteToday(requireSite('seattle'), now)).toBe('2026-07-25');
+    expect(siteToday(requireSite('denver'), new Date('2026-07-26T06:00:00Z'))).toBe('2026-07-26');
   });
 });
