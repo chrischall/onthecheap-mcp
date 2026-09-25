@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.2...v1.1.3) (2026-09-24)
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv in the production-majors group ([#100](https://github.com/chrischall/onthecheap-mcp/issues/100)) ([a991a96](https://github.com/chrischall/onthecheap-mcp/commit/a991a96e58f079d3790574183dd7088d2a14a582))
+
 ## [1.1.2](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.1...v1.1.2) (2026-09-23)
 
 
