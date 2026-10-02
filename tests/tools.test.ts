@@ -18,6 +18,14 @@ const healthcheck = vi.spyOn(OtcClient.prototype, 'healthcheck');
 const resolveExpiredCategoryId = vi.spyOn(OtcClient.prototype, 'resolveExpiredCategoryId');
 
 const registry = new OtcRegistry();
+
+/** The shared healthcheck envelope a reachable site reports. */
+const HEALTHY = {
+  ok: true,
+  credential: { source: 'none-required', resolved: true },
+  probe: { url: 'https://www.charlotteonthecheap.com/wp-json/', elapsed_ms: 1 },
+  hint: 'reachable',
+};
 let harness: Awaited<ReturnType<typeof createTestHarness>>;
 
 async function setup() {
@@ -92,7 +100,7 @@ describe('the site argument', () => {
     listTerms.mockResolvedValue([]);
     getEventsForDate.mockResolvedValue({ date: '2026-07-25', events: [] });
     getEventsForMonth.mockResolvedValue([]);
-    healthcheck.mockResolvedValue({ ok: true, baseUrl: 'https://milehighonthecheap.com' });
+    healthcheck.mockResolvedValue({ ...HEALTHY, baseUrl: 'https://milehighonthecheap.com' });
 
     const out = parse(await h.callTool(tool, { ...args, site: 'denver' }));
     expect(out.site_name).toBe('Mile High on the Cheap');
@@ -352,7 +360,7 @@ describe('request cancellation', () => {
     listTerms.mockResolvedValue([]);
     getEventsForDate.mockResolvedValue({ date: '2026-07-25', events: [] });
     getEventsForMonth.mockResolvedValue([]);
-    healthcheck.mockResolvedValue({ ok: true, baseUrl: 'https://www.charlotteonthecheap.com' });
+    healthcheck.mockResolvedValue({ ...HEALTHY, baseUrl: 'https://www.charlotteonthecheap.com' });
 
     await h.callTool(tool, { ...args, site: 'charlotte' });
     expect(callOf().at(-1)).toBeInstanceOf(AbortSignal);
@@ -386,7 +394,7 @@ describe('taxonomy and health tools', () => {
   it('reports health for the named site', async () => {
     const h = await setup();
     healthcheck.mockResolvedValue({
-      ok: true,
+      ...HEALTHY,
       site: 'Charlotte On The Cheap',
       baseUrl: 'https://www.charlotteonthecheap.com',
     });
