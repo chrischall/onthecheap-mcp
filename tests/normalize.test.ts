@@ -75,6 +75,17 @@ describe('htmlToText', () => {
   it('decodes named entities the lightweight decoders miss', () => {
     expect(htmlToText('<p>9&ndash;5 &hellip; caf&eacute;&nbsp;open</p>')).toBe('9–5 … café open');
   });
+
+  // Gained by delegating to mcp-utils htmlToReadableText (fleet-audit#1083).
+  it('does not read a leading doctype as words', () => {
+    expect(htmlToText('<!DOCTYPE html><html><body><p>Hi there</p></body></html>')).toBe('Hi there');
+  });
+
+  it('survives hostile nesting depth without overflowing the stack', () => {
+    const depth = 20_000;
+    const html = '<span>'.repeat(depth) + 'deep' + '</span>'.repeat(depth);
+    expect(htmlToText(html)).toBe('deep');
+  });
 });
 
 describe('compactPost', () => {
