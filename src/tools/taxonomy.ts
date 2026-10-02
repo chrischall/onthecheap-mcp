@@ -108,7 +108,9 @@ export function registerUtilityTools(server: McpServer, registry: OtcRegistry): 
       description:
         'Verify one "on the Cheap" site is reachable and its public API is responding. ' +
         'Pass the `site` key for the city (see otc_list_sites). ' +
-        'The sites need no credentials, so this checks connectivity only. Read-only.',
+        'The sites need no credentials, so this checks connectivity only. On failure `error.kind` names ' +
+        'what broke: edge_blocked (a CDN/WAF refused the request before it reached the site), http, timeout ' +
+        'or transport. Read-only.',
       annotations: toolAnnotations({
         title: 'Check an On the Cheap site’s connectivity',
         readOnly: true,

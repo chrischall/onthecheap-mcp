@@ -68,7 +68,7 @@ events calendar — it is still searchable via the other tools.
 | `otc_list_categories` | Category ids and post counts, for filtering searches by topic. |
 | `otc_list_locations` | Local area ids and post counts, for filtering geographically. |
 | `otc_list_sites` | The cities in the network and their `site` keys. Takes no arguments. |
-| `otc_healthcheck` | Confirm one site is reachable. |
+| `otc_healthcheck` | Confirm one site is reachable; on failure `error.kind` is `edge_blocked`, `http`, `timeout` or `transport`. |
 
 ### Examples
 

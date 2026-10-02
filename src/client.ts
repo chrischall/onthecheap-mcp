@@ -1,4 +1,9 @@
-import { McpToolError, readEnvVar } from '@chrischall/mcp-utils';
+import { EdgeBlockedError, McpToolError, detectEdgeBlock, readEnvVar } from '@chrischall/mcp-utils';
+import {
+  runCredentialHealthcheck,
+  type CredentialHealthcheckResult,
+  type RegisterCredentialHealthcheckToolArgs,
+} from '@chrischall/mcp-utils/healthcheck';
 import { VERSION } from './version.js';
 import {
   parseDayPage,
@@ -37,6 +42,46 @@ export const EXPIRED_CATEGORY_SLUG = 'expired';
  * exactly that, hanging too.
  */
 export const DEFAULT_TIMEOUT_MS = 15_000;
+
+/** A site answered with a non-2xx that is not a CDN/WAF block; carries the status. */
+export class OtcHttpError extends McpToolError {
+  constructor(
+    readonly status: number,
+    message: string,
+    hint: string,
+  ) {
+    super(message, { hint });
+    this.name = 'OtcHttpError';
+  }
+}
+
+/** The site did not answer within the client's timeout. */
+export class OtcTimeoutError extends McpToolError {
+  constructor(message: string, opts: { hint: string; cause: unknown }) {
+    super(message, opts);
+    this.name = 'OtcTimeoutError';
+  }
+}
+
+/** The site could not be reached at all (DNS, refused, reset). */
+export class OtcUnreachableError extends McpToolError {
+  constructor(message: string, opts: { hint: string; cause?: unknown }) {
+    super(message, opts);
+    this.name = 'OtcUnreachableError';
+  }
+}
+
+/**
+ * What `otc_healthcheck` reports: the shared credential-healthcheck envelope
+ * (`ok`, `credential`, `probe`, `error.kind`, `hint`) plus which site was read.
+ * `credential` always reads `resolved: true` from source `none-required` —
+ * these sites are keyless, so a failure is never a credential problem.
+ */
+export type OtcHealth = CredentialHealthcheckResult & {
+  site?: string;
+  siteKey?: string;
+  baseUrl: string;
+};
 
 export interface ListPostsParams {
   search?: string;
@@ -161,25 +206,35 @@ export class OtcClient {
         });
       }
       if (timeout.aborted) {
-        throw new McpToolError(
+        throw new OtcTimeoutError(
           `${this.site?.name ?? this.baseUrl} did not respond within ${this.timeoutMs / 1000}s.`,
           { hint: 'The site may be overloaded or briefly unavailable; retry shortly.', cause: e },
         );
       }
-      throw new McpToolError(
+      throw new OtcUnreachableError(
         `Could not reach ${this.baseUrl}: ${e instanceof Error ? e.message : String(e)}`,
-        { hint: 'Check network connectivity; the site needs no credentials.' },
+        { hint: 'Check network connectivity; the site needs no credentials.', cause: e },
       );
     }
+    // A CDN/WAF refusal or challenge page is not the site's answer. Judged on
+    // every response, not just non-2xx: a challenge can arrive as 200, and the
+    // events pages are parsed from HTML, where it would read as an empty day
+    // (chrischall/mcp-host#1015).
+    const edge = detectEdgeBlock({ body, headers: res.headers, status: res.status });
+    if (edge) {
+      throw new EdgeBlockedError(res.status, edge.vendor, {
+        service: this.site?.name ?? this.baseUrl,
+        method: 'GET',
+        path: new URL(url).pathname,
+      });
+    }
     if (!res.ok) {
-      throw new McpToolError(
+      throw new OtcHttpError(
+        res.status,
         `${this.site?.name ?? this.baseUrl} returned HTTP ${res.status} for ${url}`,
-        {
-        hint:
-          res.status === 404
-            ? 'The path does not exist — check the id, slug or date.'
-            : 'The site may be briefly unavailable; retry shortly.',
-        },
+        res.status === 404
+          ? 'The path does not exist — check the id, slug or date.'
+          : 'The site may be briefly unavailable; retry shortly.',
       );
     }
     return { res, body };
@@ -363,23 +418,48 @@ export class OtcClient {
     return parseMonthPage(await this.getHtml(`/events/calendar/${path}/`, signal));
   }
 
-  async healthcheck(signal?: AbortSignal): Promise<{
-    ok: boolean;
-    site?: string;
-    siteKey?: string;
-    baseUrl: string;
-    error?: string;
-  }> {
-    try {
-      const { data } = await this.getJson<{ name?: string }>('/wp-json/', undefined, signal);
-      return { ok: true, site: data.name, siteKey: this.site?.key, baseUrl: this.baseUrl };
-    } catch (e) {
-      return {
-        ok: false,
-        siteKey: this.site?.key,
-        baseUrl: this.baseUrl,
-        error: e instanceof Error ? e.message : String(e),
-      };
-    }
+  /**
+   * One round-trip to the site's REST index, classified by mcp-utils' shared
+   * healthcheck ladder so a failure carries `error.kind`: `edge_blocked`,
+   * `http`, `timeout`, `transport` (or `unknown`). The sites are keyless, so
+   * there is no credential to resolve and no credential arm can fire: an
+   * origin 401/403 is reported as `http`.
+   */
+  async healthcheck(signal?: AbortSignal): Promise<OtcHealth> {
+    const host = new URL(this.baseUrl).host;
+    const name = this.site?.name ?? host;
+    let siteName: string | undefined;
+    const args: Omit<RegisterCredentialHealthcheckToolArgs, 'server'> = {
+      prefix: 'otc',
+      hostLabel: host,
+      probePath: '/wp-json/',
+      resolveCredential: async () => ({ source: 'none-required' }),
+      probeFn: async () => {
+        const { data } = await this.getJson<{ name?: string }>('/wp-json/', undefined, signal);
+        siteName = data.name;
+      },
+      classifyThrown: (err) => {
+        if (err instanceof EdgeBlockedError) return undefined; // the shared ladder names it
+        if (err instanceof OtcTimeoutError) return { kind: 'timeout' };
+        if (err instanceof OtcUnreachableError) return { kind: 'transport' };
+        // Keyless: an origin 401/403 is not a rejected credential.
+        if (err instanceof OtcHttpError) return { kind: 'http' };
+        return undefined;
+      },
+      // The shared copy speaks of a credential; these sites have none.
+      hints: {
+        ok: `${name} is reachable and its public API answered. These sites need no credentials; if a tool still fails, the problem is that tool.`,
+        edge_blocked: `${name} refused the request at its CDN/WAF before it reached the site. This is usually a block on this host's IP address or request fingerprint, not something to fix here — retry later or from a different network.`,
+        http: `${name} answered with an error status. A 404 usually means the probe path changed; a 5xx means the site is briefly unavailable — retry shortly.`,
+        timeout: `${name} did not answer in time. Usually transient — retry; if it persists the site is overloaded or unreachable from here.`,
+        transport: `Could not reach ${name} at all. Check network egress.`,
+        unknown: 'Unexpected failure — see error.message.',
+      },
+    };
+    // `server` is only read by registerCredentialHealthcheckTool; the runner
+    // never touches it, and this client has no server to hand it.
+    const result = await runCredentialHealthcheck(args as RegisterCredentialHealthcheckToolArgs);
+    const body = JSON.parse(result.content[0].text) as CredentialHealthcheckResult;
+    return { ...body, site: siteName, siteKey: this.site?.key, baseUrl: this.baseUrl };
   }
 }
