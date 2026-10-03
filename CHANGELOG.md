@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.4](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.3...v1.1.4) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** adopt @chrischall/mcp-utils 2.12.0 htmlToReadableText for post bodies ([#108](https://github.com/chrischall/onthecheap-mcp/issues/108)) ([12dd9c7](https://github.com/chrischall/onthecheap-mcp/commit/12dd9c7a15e72aa9b6cefa5073e1fdadfd194ea6))
+* **deps:** bump @chrischall/mcp-utils to 2.10.0 ([#107](https://github.com/chrischall/onthecheap-mcp/issues/107)) ([3b4dafb](https://github.com/chrischall/onthecheap-mcp/commit/3b4dafbcfee8952b671b5970c72514004b664ee0))
+* **deps:** bump @chrischall/mcp-utils to 2.13.0 ([#110](https://github.com/chrischall/onthecheap-mcp/issues/110)) ([d570436](https://github.com/chrischall/onthecheap-mcp/commit/d570436a1bcc840b7cca8b3ff653bea1575efb5e))
+* **deps:** Bump the production-dependencies group with 2 updates ([#103](https://github.com/chrischall/onthecheap-mcp/issues/103)) ([2468b02](https://github.com/chrischall/onthecheap-mcp/commit/2468b0294984b6c52dc5caf3b30ffa40b7bf7d9a))
+* **healthcheck:** report CDN/WAF blocks and failure kinds from otc_healthcheck ([#109](https://github.com/chrischall/onthecheap-mcp/issues/109)) ([705b8cf](https://github.com/chrischall/onthecheap-mcp/commit/705b8cfc6c9c28e0a34a0e312e8226e1369558d6))
+* report CDN/WAF blocks as edge_blocked, not a rejected credential (mcp-utils 2.9.0) ([#105](https://github.com/chrischall/onthecheap-mcp/issues/105)) ([fcde3e0](https://github.com/chrischall/onthecheap-mcp/commit/fcde3e05566bb696a2d96a15bb112e3f6c6377e6))
+
 ## [1.1.3](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.2...v1.1.3) (2026-09-24)
 
 
