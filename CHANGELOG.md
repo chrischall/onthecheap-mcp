@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.5](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.4...v1.1.5) (2026-10-05)
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv ([#113](https://github.com/chrischall/onthecheap-mcp/issues/113)) ([262b333](https://github.com/chrischall/onthecheap-mcp/commit/262b333af2faafa648cef5780395d7ddc37604f8))
+* **deps:** require @chrischall/mcp-utils 2.14.0 and MCP SDK 2.3.0 ([#115](https://github.com/chrischall/onthecheap-mcp/issues/115)) ([630e3bb](https://github.com/chrischall/onthecheap-mcp/commit/630e3bb2419cf22cc2103dd044db38627bb6ac9f))
+
 ## [1.1.4](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.3...v1.1.4) (2026-10-03)
 
 
