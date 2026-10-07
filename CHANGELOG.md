@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.6](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.5...v1.1.6) (2026-10-07)
+
+
+### Bug Fixes
+
+* **deps:** Bump source-map-js ([#118](https://github.com/chrischall/onthecheap-mcp/issues/118)) ([2abbc61](https://github.com/chrischall/onthecheap-mcp/commit/2abbc614476c139cb005866cf3323144751dccbe))
+* **deps:** pick up mcp-utils 2.15.0 confirmation-prompt opt-out ([#116](https://github.com/chrischall/onthecheap-mcp/issues/116)) ([0d8b2d7](https://github.com/chrischall/onthecheap-mcp/commit/0d8b2d7b57e237010854937bd09dd6965819cfab))
+
 ## [1.1.5](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.4...v1.1.5) (2026-10-05)
 
 
