@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-REPO="${1:-chrischall/charlotteonthecheap-mcp}"
+REPO="${1:-chrischall/onthecheap-mcp}"
 
 ruleset_id_by_name() {
   gh api "repos/$REPO/rulesets" --jq ".[] | select(.name == \"$1\") | .id" | head -n1
