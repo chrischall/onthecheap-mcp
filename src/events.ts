@@ -57,6 +57,14 @@ export function toDatePath(isoDate: string): string {
       hint: 'Pass a real calendar date like 2026-07-25.',
     });
   }
+  // Day 1..31 is not enough: the site rolls 2-31 over to March 3 and renders
+  // that day instead of failing. Round-trip through Date to catch it.
+  const probe = new Date(Date.UTC(Number(year), mo - 1, d));
+  if (probe.getUTCMonth() !== mo - 1 || probe.getUTCDate() !== d) {
+    throw new McpToolError(`Invalid date "${isoDate}" — not a real calendar date.`, {
+      hint: `That month has no day ${d}; pass a real calendar date like 2026-07-25.`,
+    });
+  }
   return `${mo}-${d}-${year}`;
 }
 
