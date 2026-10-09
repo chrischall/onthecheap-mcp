@@ -1,4 +1,4 @@
-import { EdgeBlockedError, McpToolError, detectEdgeBlock, readEnvVar } from '@chrischall/mcp-utils';
+import { EdgeBlockedError, McpToolError, detectEdgeBlock } from '@chrischall/mcp-utils';
 import {
   runCredentialHealthcheck,
   type CredentialHealthcheckResult,
@@ -163,7 +163,10 @@ export interface OtcClientOptions {
  * REST API, so listings are parsed from its server-rendered HTML.
  *
  * Which site is read comes from (in order) an explicit `baseUrl`, an explicit
- * `site` key, `OTC_BASE_URL`, `OTC_SITE`, then the default.
+ * `site` key, then the default. The environment is never consulted: the old
+ * single-city `OTC_BASE_URL` / `OTC_SITE` vars are dead since the server went
+ * multi-site, and honouring them would let a stale value silently redirect
+ * reads (fleet-audit#623).
  */
 export class OtcClient {
   private readonly baseUrl: string;
@@ -175,10 +178,8 @@ export class OtcClient {
   private expiredCategoryId: number | null | undefined;
 
   constructor(opts: OtcClientOptions = {}) {
-    const explicitUrl = opts.baseUrl ?? readEnvVar('OTC_BASE_URL');
-    const siteKey = opts.site ?? readEnvVar('OTC_SITE');
     this.baseUrl = (
-      explicitUrl ?? requireSite(siteKey ?? DEFAULT_SITE_KEY).baseUrl
+      opts.baseUrl ?? requireSite(opts.site ?? DEFAULT_SITE_KEY).baseUrl
     ).replace(/\/+$/, '');
     this.site = siteForBaseUrl(this.baseUrl);
     // Call the global fetch as a method of globalThis, never as a detached

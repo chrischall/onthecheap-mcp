@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect, vi } from 'vitest';
 import { EdgeBlockedError, McpToolError } from '@chrischall/mcp-utils';
 import { MAX_TERM_PAGES, OtcClient, OtcHttpError } from '../src/client.js';
@@ -567,5 +569,29 @@ describe('listTerms pagination', () => {
     expect(calls).toHaveLength(MAX_TERM_PAGES);
     expect(res.truncated).toBe(true);
     expect(res.total).toBe(100000);
+  });
+});
+
+describe('site selection', () => {
+  // The server is multi-site: the `site` tool argument picks the city. The old
+  // single-city OTC_SITE / OTC_BASE_URL env vars are dead (CHANGELOG 1.0.0) and
+  // must not redirect a client — and OTC_BASE_URL was the one path that could
+  // point it at an arbitrary host (fleet-audit#623).
+  it('ignores OTC_SITE and OTC_BASE_URL in the environment', () => {
+    vi.stubEnv('OTC_SITE', 'atlanta');
+    vi.stubEnv('OTC_BASE_URL', 'https://example.com');
+    try {
+      expect(new OtcClient().site?.key).toBe('charlotte');
+      expect(new OtcClient({ site: 'denver' }).site?.key).toBe('denver');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('ships no OTC_* env plumbing in the plugin or hosting config', () => {
+    const root = fileURLToPath(new URL('..', import.meta.url));
+    for (const file of ['.mcp.json', 'mint.yaml']) {
+      expect(readFileSync(`${root}/${file}`, 'utf8'), file).not.toMatch(/OTC_(SITE|BASE_URL)/);
+    }
   });
 });

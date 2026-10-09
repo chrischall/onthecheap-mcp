@@ -2,11 +2,7 @@
   "mcpServers": {
     "onthecheap": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
-      "env": {
-        "OTC_SITE": "${OTC_SITE}",
-        "OTC_BASE_URL": "${OTC_BASE_URL}"
-      }
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]
     }
   }
 }
