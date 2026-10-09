@@ -1,4 +1,4 @@
-import { EdgeBlockedError, McpToolError, detectEdgeBlock, readEnvVar } from '@chrischall/mcp-utils';
+import { EdgeBlockedError, McpToolError, detectEdgeBlock } from '@chrischall/mcp-utils';
 import {
   runCredentialHealthcheck,
   type CredentialHealthcheckResult,
@@ -128,6 +128,22 @@ export interface WpTerm {
   count: number;
 }
 
+/**
+ * Upper bound on taxonomy pages fetched in one listing — 1,000 terms at the
+ * default page size. Today's sites carry ~30–50 categories and locations; the
+ * cap only stops a runaway (a huge tag list) from fanning out into hundreds of
+ * requests, and a listing it cuts is reported `truncated`.
+ */
+export const MAX_TERM_PAGES = 10;
+
+export interface ListTermsResult {
+  terms: WpTerm[];
+  /** The site's total term count, or null when it omits the header. */
+  total: number | null;
+  /** True when `MAX_TERM_PAGES` stopped the listing before the last page. */
+  truncated: boolean;
+}
+
 export interface OtcClientOptions {
   /** Site key or alias, e.g. "denver". Ignored when `baseUrl` is given. */
   site?: string;
@@ -147,7 +163,10 @@ export interface OtcClientOptions {
  * REST API, so listings are parsed from its server-rendered HTML.
  *
  * Which site is read comes from (in order) an explicit `baseUrl`, an explicit
- * `site` key, `OTC_BASE_URL`, `OTC_SITE`, then the default.
+ * `site` key, then the default. The environment is never consulted: the old
+ * single-city `OTC_BASE_URL` / `OTC_SITE` vars are dead since the server went
+ * multi-site, and honouring them would let a stale value silently redirect
+ * reads (fleet-audit#623).
  */
 export class OtcClient {
   private readonly baseUrl: string;
@@ -159,10 +178,8 @@ export class OtcClient {
   private expiredCategoryId: number | null | undefined;
 
   constructor(opts: OtcClientOptions = {}) {
-    const explicitUrl = opts.baseUrl ?? readEnvVar('OTC_BASE_URL');
-    const siteKey = opts.site ?? readEnvVar('OTC_SITE');
     this.baseUrl = (
-      explicitUrl ?? requireSite(siteKey ?? DEFAULT_SITE_KEY).baseUrl
+      opts.baseUrl ?? requireSite(opts.site ?? DEFAULT_SITE_KEY).baseUrl
     ).replace(/\/+$/, '');
     this.site = siteForBaseUrl(this.baseUrl);
     // Call the global fetch as a method of globalThis, never as a detached
@@ -228,16 +245,41 @@ export class OtcClient {
         path: new URL(url).pathname,
       });
     }
-    if (!res.ok) {
-      throw new OtcHttpError(
-        res.status,
-        `${this.site?.name ?? this.baseUrl} returned HTTP ${res.status} for ${url}`,
-        res.status === 404
-          ? 'The path does not exist — check the id, slug or date.'
-          : 'The site may be briefly unavailable; retry shortly.',
-      );
-    }
+    if (!res.ok) throw this.httpError(res.status, url, body);
     return { res, body };
+  }
+
+  /**
+   * Builds the error for a non-2xx answer. WordPress explains a rejected
+   * request in a JSON body (`code`, `message`); that is surfaced, and only
+   * statuses that can succeed on a second try (429, 5xx) are told to retry.
+   * Paging past the end is a 400 `rest_post_invalid_page_number` — "retry"
+   * there would send a model round in a loop (fleet-audit#620).
+   */
+  private httpError(status: number, url: string, body: string): OtcHttpError {
+    let wp: { code?: unknown; message?: unknown } | undefined;
+    try {
+      const parsed: unknown = JSON.parse(body);
+      if (parsed && typeof parsed === 'object') wp = parsed as typeof wp;
+    } catch {
+      // Not a WP JSON error body (an HTML error page, say); status alone it is.
+    }
+    const code = typeof wp?.code === 'string' ? wp.code : undefined;
+    const detail = typeof wp?.message === 'string' ? wp.message : undefined;
+    const message =
+      `${this.site?.name ?? this.baseUrl} returned HTTP ${status} for ${url}` +
+      (detail ? `: ${detail}${code ? ` (${code})` : ''}` : '');
+    let hint: string;
+    if (code === 'rest_post_invalid_page_number') {
+      hint = 'page is past the last page of results — see total_pages from an earlier page and stop paging.';
+    } else if (status === 404) {
+      hint = 'The path does not exist — check the id, slug or date.';
+    } else if (status === 429 || status >= 500) {
+      hint = 'The site may be briefly unavailable; retry shortly.';
+    } else {
+      hint = 'The site rejected the request — check the arguments; repeating the same call will not help.';
+    }
+    return new OtcHttpError(status, message, hint);
   }
 
   /**
@@ -390,20 +432,40 @@ export class OtcClient {
     }
   }
 
-  /** Lists terms of a taxonomy ("categories", "tags" or "locations"). */
+  /**
+   * Lists every term of a taxonomy ("categories", "tags" or "locations"),
+   * most-used first, following `x-wp-totalpages`.
+   *
+   * One page used to be the whole answer: a site crossing `perPage` terms
+   * silently lost the least-used ones and the tools reported the page length as
+   * the total (fleet-audit#625). Paging stops at `MAX_TERM_PAGES`; `truncated`
+   * says when that cut the list short, and `total` is the site's own count
+   * (null when it omits the header).
+   */
   async listTerms(
     taxonomy: 'categories' | 'tags' | 'locations',
     perPage = 100,
     signal?: AbortSignal,
-  ): Promise<WpTerm[]> {
-    const q = new URLSearchParams({
-      per_page: String(perPage),
-      orderby: 'count',
-      order: 'desc',
-      _fields: 'id,name,slug,count',
-    });
-    const { data } = await this.getJson<WpTerm[]>(`/wp-json/wp/v2/${taxonomy}`, q, signal);
-    return data;
+  ): Promise<ListTermsResult> {
+    const terms: WpTerm[] = [];
+    let total: number | null = null;
+    let totalPages = 1;
+    for (let page = 1; page <= Math.min(totalPages, MAX_TERM_PAGES); page++) {
+      const q = new URLSearchParams({
+        per_page: String(perPage),
+        orderby: 'count',
+        order: 'desc',
+        _fields: 'id,name,slug,count',
+      });
+      if (page > 1) q.set('page', String(page));
+      const { data, res } = await this.getJson<WpTerm[]>(`/wp-json/wp/v2/${taxonomy}`, q, signal);
+      terms.push(...data);
+      const rawTotal = res.headers.get('x-wp-total');
+      const rawPages = Number(res.headers.get('x-wp-totalpages'));
+      if (rawTotal !== null) total = Number(rawTotal);
+      if (Number.isFinite(rawPages) && rawPages > 0) totalPages = rawPages;
+    }
+    return { terms, total, truncated: totalPages > MAX_TERM_PAGES };
   }
 
   /** Full listings for one day. */

@@ -26,11 +26,15 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
     },
     async ({ site: siteKey }, ctx) => {
       const resolved = requireSite(siteKey);
-      const terms = await registry.for(resolved.key).listTerms('categories', undefined, ctx.mcpReq.signal);
+      const { terms, total, truncated } = await registry
+        .for(resolved.key)
+        .listTerms('categories', undefined, ctx.mcpReq.signal);
       return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         count: terms.length,
+        total: total ?? terms.length,
+        ...(truncated ? { truncated: true } : {}),
         categories: terms.map((t) => ({ ...t, name: decodeEntities(t.name) })),
       });
     },
@@ -54,11 +58,15 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
     },
     async ({ site: siteKey }, ctx) => {
       const resolved = requireSite(siteKey);
-      const terms = await registry.for(resolved.key).listTerms('locations', undefined, ctx.mcpReq.signal);
+      const { terms, total, truncated } = await registry
+        .for(resolved.key)
+        .listTerms('locations', undefined, ctx.mcpReq.signal);
       return minifiedResult({
         site: resolved.key,
         site_name: resolved.name,
         count: terms.length,
+        total: total ?? terms.length,
+        ...(truncated ? { truncated: true } : {}),
         locations: terms.map((t) => ({ ...t, name: decodeEntities(t.name) })),
       });
     },

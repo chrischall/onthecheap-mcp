@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect, vi } from 'vitest';
 import { EdgeBlockedError, McpToolError } from '@chrischall/mcp-utils';
-import { OtcClient } from '../src/client.js';
+import { MAX_TERM_PAGES, OtcClient, OtcHttpError } from '../src/client.js';
 
 /** The `expired` category id this fixture site reports for the slug lookup. */
 const EXPIRED_ID = 6193;
@@ -156,6 +158,54 @@ describe('error handling', () => {
   it('surfaces a non-2xx response as a tool error carrying the status', async () => {
     const { impl } = stubFetch(new Response('nope', { status: 500 }));
     await expect(client(impl).listPosts({})).rejects.toThrow(/500/);
+  });
+
+  it('tells a caller paging past the end that it reached the last page, not to retry', async () => {
+    // WordPress answers 400 rest_post_invalid_page_number past the last page
+    // (fleet-audit#620). Retrying the same call can never succeed.
+    const wpError = new Response(
+      JSON.stringify({
+        code: 'rest_post_invalid_page_number',
+        message: 'The page number requested is larger than the number of pages available.',
+        data: { status: 400 },
+      }),
+      { status: 400, headers: { 'content-type': 'application/json' } },
+    );
+    const { impl } = stubFetch(wpError);
+    const err = await client(impl).listPosts({ page: 9999 }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(OtcHttpError);
+    expect((err as OtcHttpError).status).toBe(400);
+    expect((err as OtcHttpError).message).toMatch(/larger than the number of pages/);
+    expect((err as OtcHttpError).hint).toMatch(/past the last page/);
+    expect((err as OtcHttpError).hint).not.toMatch(/retry/i);
+  });
+
+  it('surfaces any other 4xx with the site’s own message and no retry advice', async () => {
+    const { impl } = stubFetch(
+      new Response(
+        JSON.stringify({ code: 'rest_invalid_param', message: 'Invalid parameter(s): per_page' }),
+        { status: 400, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const err = (await client(impl).listPosts({}).catch((e: unknown) => e)) as OtcHttpError;
+    expect(err.message).toMatch(/Invalid parameter\(s\): per_page/);
+    expect(err.message).toMatch(/rest_invalid_param/);
+    expect(err.hint).not.toMatch(/retry/i);
+  });
+
+  it('keeps the 4xx hint when the error body is not JSON', async () => {
+    const { impl } = stubFetch(new Response('<html>bad</html>', { status: 400 }));
+    const err = (await client(impl).listPosts({}).catch((e: unknown) => e)) as OtcHttpError;
+    expect(err.message).toMatch(/HTTP 400/);
+    expect(err.hint).not.toMatch(/retry/i);
+  });
+
+  it('still suggests retrying for 429 and 5xx', async () => {
+    for (const status of [429, 503]) {
+      const { impl } = stubFetch(new Response('busy', { status }));
+      const err = (await client(impl).listPosts({}).catch((e: unknown) => e)) as OtcHttpError;
+      expect(err.hint).toMatch(/retry/i);
+    }
   });
 
   it('does not try to JSON-parse an HTML error page', async () => {
@@ -472,5 +522,76 @@ describe('stalled and cancelled requests', () => {
     expect(health.ok).toBe(false);
     expect(health.error?.message).toMatch(/did not respond within/i);
     expect(health.error?.kind).toBe('timeout');
+  });
+});
+
+describe('listTerms pagination', () => {
+  // A site with more than one page of terms used to lose everything past the
+  // first 100, and the tools reported count = 100 as if that were the total
+  // (fleet-audit#625).
+  const term = (id: number) => ({ id, name: `T${id}`, slug: `t${id}`, count: 1 });
+
+  it('follows x-wp-totalpages and returns every term with the header total', async () => {
+    const urls: string[] = [];
+    const impl = vi.fn(async (input: any) => {
+      const url = String(input);
+      urls.push(url);
+      const page = Number(new URL(url).searchParams.get('page') ?? '1');
+      const headers = { 'x-wp-total': '5', 'x-wp-totalpages': '3' };
+      return jsonResponse(page < 3 ? [term(page * 2 - 1), term(page * 2)] : [term(5)], headers);
+    }) as unknown as typeof fetch;
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('categories', 2);
+    expect(res.terms.map((t) => t.id)).toEqual([1, 2, 3, 4, 5]);
+    expect(res.total).toBe(5);
+    expect(res.truncated).toBe(false);
+    expect(urls).toHaveLength(3);
+  });
+
+  it('makes one request when the site has a single page', async () => {
+    const { impl, calls } = stubFetch(jsonResponse([term(1)], { 'x-wp-total': '1', 'x-wp-totalpages': '1' }));
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('locations');
+    expect(calls).toHaveLength(1);
+    expect(res).toEqual({ terms: [term(1)], total: 1, truncated: false });
+  });
+
+  it('falls back to the page length when the site omits the count headers', async () => {
+    const { impl, calls } = stubFetch(jsonResponse([term(1), term(2)]));
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('locations');
+    expect(calls).toHaveLength(1);
+    expect(res).toEqual({ terms: [term(1), term(2)], total: null, truncated: false });
+  });
+
+  it('stops at the page cap and flags the result as truncated', async () => {
+    const { impl, calls } = stubFetch(
+      jsonResponse([term(1)], { 'x-wp-total': '100000', 'x-wp-totalpages': '1000' }),
+    );
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('tags', 1);
+    expect(calls).toHaveLength(MAX_TERM_PAGES);
+    expect(res.truncated).toBe(true);
+    expect(res.total).toBe(100000);
+  });
+});
+
+describe('site selection', () => {
+  // The server is multi-site: the `site` tool argument picks the city. The old
+  // single-city OTC_SITE / OTC_BASE_URL env vars are dead (CHANGELOG 1.0.0) and
+  // must not redirect a client — and OTC_BASE_URL was the one path that could
+  // point it at an arbitrary host (fleet-audit#623).
+  it('ignores OTC_SITE and OTC_BASE_URL in the environment', () => {
+    vi.stubEnv('OTC_SITE', 'atlanta');
+    vi.stubEnv('OTC_BASE_URL', 'https://example.com');
+    try {
+      expect(new OtcClient().site?.key).toBe('charlotte');
+      expect(new OtcClient({ site: 'denver' }).site?.key).toBe('denver');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('ships no OTC_* env plumbing in the plugin or hosting config', () => {
+    const root = fileURLToPath(new URL('..', import.meta.url));
+    for (const file of ['.mcp.json', 'mint.yaml']) {
+      expect(readFileSync(`${root}/${file}`, 'utf8'), file).not.toMatch(/OTC_(SITE|BASE_URL)/);
+    }
   });
 });

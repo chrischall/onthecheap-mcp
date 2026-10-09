@@ -97,7 +97,7 @@ describe('the site argument', () => {
     const h = await setup();
     listPosts.mockResolvedValue({ posts: [], total: 0, totalPages: 0 });
     getPost.mockResolvedValue(POST);
-    listTerms.mockResolvedValue([]);
+    listTerms.mockResolvedValue({ terms: [], total: 0, truncated: false });
     getEventsForDate.mockResolvedValue({ date: '2026-07-25', events: [] });
     getEventsForMonth.mockResolvedValue([]);
     healthcheck.mockResolvedValue({ ...HEALTHY, baseUrl: 'https://milehighonthecheap.com' });
@@ -108,7 +108,7 @@ describe('the site argument', () => {
 
   it('accepts an alias', async () => {
     const h = await setup();
-    listTerms.mockResolvedValue([]);
+    listTerms.mockResolvedValue({ terms: [], total: 0, truncated: false });
     const out = parse(await h.callTool('otc_list_categories', { site: 'rva' }));
     expect(out.site).toBe('richmond');
   });
@@ -119,7 +119,7 @@ describe('the site argument', () => {
     // — that key is computed separately from the client actually used. So
     // check which client the call landed on.
     const h = await setup();
-    listTerms.mockResolvedValue([]);
+    listTerms.mockResolvedValue({ terms: [], total: 0, truncated: false });
 
     await h.callTool('otc_list_categories', { site: 'denver' });
 
@@ -357,7 +357,7 @@ describe('request cancellation', () => {
     const h = await setup();
     listPosts.mockResolvedValue({ posts: [], total: 0, totalPages: 0 });
     getPost.mockResolvedValue(POST);
-    listTerms.mockResolvedValue([]);
+    listTerms.mockResolvedValue({ terms: [], total: 0, truncated: false });
     getEventsForDate.mockResolvedValue({ date: '2026-07-25', events: [] });
     getEventsForMonth.mockResolvedValue([]);
     healthcheck.mockResolvedValue({ ...HEALTHY, baseUrl: 'https://www.charlotteonthecheap.com' });
@@ -377,7 +377,11 @@ describe('request cancellation', () => {
 describe('taxonomy and health tools', () => {
   it('lists categories with decoded names', async () => {
     const h = await setup();
-    listTerms.mockResolvedValue([{ id: 5, name: 'Food &amp; Drink', slug: 'food', count: 10 }]);
+    listTerms.mockResolvedValue({
+      terms: [{ id: 5, name: 'Food &amp; Drink', slug: 'food', count: 10 }],
+      total: 1,
+      truncated: false,
+    });
     const out = parse(await h.callTool('otc_list_categories', { site: 'charlotte' }));
     expect(listTerms.mock.calls[0][0]).toBe('categories');
     expect(out.categories[0].name).toBe('Food & Drink');
@@ -385,10 +389,34 @@ describe('taxonomy and health tools', () => {
 
   it('lists locations', async () => {
     const h = await setup();
-    listTerms.mockResolvedValue([{ id: 6276, name: 'Center City', slug: 'center-city', count: 1158 }]);
+    listTerms.mockResolvedValue({
+      terms: [{ id: 6276, name: 'Center City', slug: 'center-city', count: 1158 }],
+      total: 1,
+      truncated: false,
+    });
     const out = parse(await h.callTool('otc_list_locations', { site: 'charlotte' }));
     expect(listTerms.mock.calls[0][0]).toBe('locations');
     expect(out.locations[0].slug).toBe('center-city');
+  });
+
+  it('reports the site total and flags a truncated taxonomy listing', async () => {
+    // fleet-audit#625: a count that silently equals the page size reads as the
+    // real total. Report the site's own total and say when the list is cut.
+    const h = await setup();
+    listTerms.mockResolvedValue({
+      terms: [{ id: 1, name: 'A', slug: 'a', count: 3 }],
+      total: 2500,
+      truncated: true,
+    });
+    const out = parse(await h.callTool('otc_list_locations', { site: 'charlotte' }));
+    expect(out.count).toBe(1);
+    expect(out.total).toBe(2500);
+    expect(out.truncated).toBe(true);
+
+    listTerms.mockResolvedValue({ terms: [{ id: 1, name: 'A', slug: 'a', count: 3 }], total: 1, truncated: false });
+    const full = parse(await h.callTool('otc_list_categories', { site: 'charlotte' }));
+    expect(full.total).toBe(1);
+    expect(full.truncated).toBeUndefined();
   });
 
   it('reports health for the named site', async () => {

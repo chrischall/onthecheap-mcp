@@ -76,6 +76,17 @@ describe('toDatePath / toMonthPath', () => {
     expect(() => toDatePath('not-a-date')).toThrow();
     expect(() => toMonthPath('2026-13')).toThrow();
   });
+
+  // The site rolls an impossible day over rather than rejecting it:
+  // /events/view-date/2-31-2026/ renders "Tuesday, March 3, 2026", so the tool
+  // would quietly answer with another day's listings (fleet-audit#621).
+  it('rejects a day that does not exist in its month', () => {
+    expect(() => toDatePath('2026-02-31')).toThrow(/not a real calendar date/);
+    expect(() => toDatePath('2026-02-29')).toThrow(); // 2026 is not a leap year
+    expect(() => toDatePath('2026-04-31')).toThrow();
+    expect(toDatePath('2028-02-29')).toBe('2-29-2028'); // 2028 is
+    expect(toDatePath('2026-01-31')).toBe('1-31-2026');
+  });
 });
 
 describe('parseDayPage', () => {

@@ -16,11 +16,9 @@ export interface OtcRegistryOptions {
  * id costs a request to resolve and differs on every install in the network.
  * Rebuilding the client each call would pay that request on every single read.
  *
- * The environment is deliberately not consulted. `OtcClient` will fall back to
- * `OTC_BASE_URL` / `OTC_SITE` when constructed bare, which was right when a
- * deployment served one city; here it would let a stale env var silently
- * redirect every read to the wrong site. The base URL is always passed
- * explicitly.
+ * The base URL is always passed explicitly; the environment plays no part in
+ * site selection (the old single-city `OTC_BASE_URL` / `OTC_SITE` vars are no
+ * longer read anywhere).
  */
 export class OtcRegistry {
   private readonly clients = new Map<string, OtcClient>();
