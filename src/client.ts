@@ -128,6 +128,22 @@ export interface WpTerm {
   count: number;
 }
 
+/**
+ * Upper bound on taxonomy pages fetched in one listing — 1,000 terms at the
+ * default page size. Today's sites carry ~30–50 categories and locations; the
+ * cap only stops a runaway (a huge tag list) from fanning out into hundreds of
+ * requests, and a listing it cuts is reported `truncated`.
+ */
+export const MAX_TERM_PAGES = 10;
+
+export interface ListTermsResult {
+  terms: WpTerm[];
+  /** The site's total term count, or null when it omits the header. */
+  total: number | null;
+  /** True when `MAX_TERM_PAGES` stopped the listing before the last page. */
+  truncated: boolean;
+}
+
 export interface OtcClientOptions {
   /** Site key or alias, e.g. "denver". Ignored when `baseUrl` is given. */
   site?: string;
@@ -415,20 +431,40 @@ export class OtcClient {
     }
   }
 
-  /** Lists terms of a taxonomy ("categories", "tags" or "locations"). */
+  /**
+   * Lists every term of a taxonomy ("categories", "tags" or "locations"),
+   * most-used first, following `x-wp-totalpages`.
+   *
+   * One page used to be the whole answer: a site crossing `perPage` terms
+   * silently lost the least-used ones and the tools reported the page length as
+   * the total (fleet-audit#625). Paging stops at `MAX_TERM_PAGES`; `truncated`
+   * says when that cut the list short, and `total` is the site's own count
+   * (null when it omits the header).
+   */
   async listTerms(
     taxonomy: 'categories' | 'tags' | 'locations',
     perPage = 100,
     signal?: AbortSignal,
-  ): Promise<WpTerm[]> {
-    const q = new URLSearchParams({
-      per_page: String(perPage),
-      orderby: 'count',
-      order: 'desc',
-      _fields: 'id,name,slug,count',
-    });
-    const { data } = await this.getJson<WpTerm[]>(`/wp-json/wp/v2/${taxonomy}`, q, signal);
-    return data;
+  ): Promise<ListTermsResult> {
+    const terms: WpTerm[] = [];
+    let total: number | null = null;
+    let totalPages = 1;
+    for (let page = 1; page <= Math.min(totalPages, MAX_TERM_PAGES); page++) {
+      const q = new URLSearchParams({
+        per_page: String(perPage),
+        orderby: 'count',
+        order: 'desc',
+        _fields: 'id,name,slug,count',
+      });
+      if (page > 1) q.set('page', String(page));
+      const { data, res } = await this.getJson<WpTerm[]>(`/wp-json/wp/v2/${taxonomy}`, q, signal);
+      terms.push(...data);
+      const rawTotal = res.headers.get('x-wp-total');
+      const rawPages = Number(res.headers.get('x-wp-totalpages'));
+      if (rawTotal !== null) total = Number(rawTotal);
+      if (Number.isFinite(rawPages) && rawPages > 0) totalPages = rawPages;
+    }
+    return { terms, total, truncated: totalPages > MAX_TERM_PAGES };
   }
 
   /** Full listings for one day. */

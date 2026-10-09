@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EdgeBlockedError, McpToolError } from '@chrischall/mcp-utils';
-import { OtcClient, OtcHttpError } from '../src/client.js';
+import { MAX_TERM_PAGES, OtcClient, OtcHttpError } from '../src/client.js';
 
 /** The `expired` category id this fixture site reports for the slug lookup. */
 const EXPIRED_ID = 6193;
@@ -520,5 +520,52 @@ describe('stalled and cancelled requests', () => {
     expect(health.ok).toBe(false);
     expect(health.error?.message).toMatch(/did not respond within/i);
     expect(health.error?.kind).toBe('timeout');
+  });
+});
+
+describe('listTerms pagination', () => {
+  // A site with more than one page of terms used to lose everything past the
+  // first 100, and the tools reported count = 100 as if that were the total
+  // (fleet-audit#625).
+  const term = (id: number) => ({ id, name: `T${id}`, slug: `t${id}`, count: 1 });
+
+  it('follows x-wp-totalpages and returns every term with the header total', async () => {
+    const urls: string[] = [];
+    const impl = vi.fn(async (input: any) => {
+      const url = String(input);
+      urls.push(url);
+      const page = Number(new URL(url).searchParams.get('page') ?? '1');
+      const headers = { 'x-wp-total': '5', 'x-wp-totalpages': '3' };
+      return jsonResponse(page < 3 ? [term(page * 2 - 1), term(page * 2)] : [term(5)], headers);
+    }) as unknown as typeof fetch;
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('categories', 2);
+    expect(res.terms.map((t) => t.id)).toEqual([1, 2, 3, 4, 5]);
+    expect(res.total).toBe(5);
+    expect(res.truncated).toBe(false);
+    expect(urls).toHaveLength(3);
+  });
+
+  it('makes one request when the site has a single page', async () => {
+    const { impl, calls } = stubFetch(jsonResponse([term(1)], { 'x-wp-total': '1', 'x-wp-totalpages': '1' }));
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('locations');
+    expect(calls).toHaveLength(1);
+    expect(res).toEqual({ terms: [term(1)], total: 1, truncated: false });
+  });
+
+  it('falls back to the page length when the site omits the count headers', async () => {
+    const { impl, calls } = stubFetch(jsonResponse([term(1), term(2)]));
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('locations');
+    expect(calls).toHaveLength(1);
+    expect(res).toEqual({ terms: [term(1), term(2)], total: null, truncated: false });
+  });
+
+  it('stops at the page cap and flags the result as truncated', async () => {
+    const { impl, calls } = stubFetch(
+      jsonResponse([term(1)], { 'x-wp-total': '100000', 'x-wp-totalpages': '1000' }),
+    );
+    const res = await new OtcClient({ fetchImpl: impl }).listTerms('tags', 1);
+    expect(calls).toHaveLength(MAX_TERM_PAGES);
+    expect(res.truncated).toBe(true);
+    expect(res.total).toBe(100000);
   });
 });
