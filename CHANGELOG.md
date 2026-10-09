@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.7](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.6...v1.1.7) (2026-10-09)
+
+
+### Bug Fixes
+
+* declare the plugin MCP config under the mcpServers key Claude Code reads ([#122](https://github.com/chrischall/onthecheap-mcp/issues/122)) ([21c2331](https://github.com/chrischall/onthecheap-mcp/commit/21c23312b0bfd5b048a41ef5d6e2955492b5af55))
+* **deps:** update @chrischall/mcp-utils to 3.0.0 ([#121](https://github.com/chrischall/onthecheap-mcp/issues/121)) ([ba84bdb](https://github.com/chrischall/onthecheap-mcp/commit/ba84bdb199ff28f7ac85945cbac52f1ead35ab9b))
+* resolve low-severity audit findings ([#119](https://github.com/chrischall/onthecheap-mcp/issues/119)) ([4f7ea80](https://github.com/chrischall/onthecheap-mcp/commit/4f7ea8040d29b811f69cdbe1b58425e2f6f13b4c))
+
 ## [1.1.6](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.5...v1.1.6) (2026-10-07)
 
 
