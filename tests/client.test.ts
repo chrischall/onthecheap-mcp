@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EdgeBlockedError, McpToolError } from '@chrischall/mcp-utils';
-import { OtcClient } from '../src/client.js';
+import { OtcClient, OtcHttpError } from '../src/client.js';
 
 /** The `expired` category id this fixture site reports for the slug lookup. */
 const EXPIRED_ID = 6193;
@@ -156,6 +156,54 @@ describe('error handling', () => {
   it('surfaces a non-2xx response as a tool error carrying the status', async () => {
     const { impl } = stubFetch(new Response('nope', { status: 500 }));
     await expect(client(impl).listPosts({})).rejects.toThrow(/500/);
+  });
+
+  it('tells a caller paging past the end that it reached the last page, not to retry', async () => {
+    // WordPress answers 400 rest_post_invalid_page_number past the last page
+    // (fleet-audit#620). Retrying the same call can never succeed.
+    const wpError = new Response(
+      JSON.stringify({
+        code: 'rest_post_invalid_page_number',
+        message: 'The page number requested is larger than the number of pages available.',
+        data: { status: 400 },
+      }),
+      { status: 400, headers: { 'content-type': 'application/json' } },
+    );
+    const { impl } = stubFetch(wpError);
+    const err = await client(impl).listPosts({ page: 9999 }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(OtcHttpError);
+    expect((err as OtcHttpError).status).toBe(400);
+    expect((err as OtcHttpError).message).toMatch(/larger than the number of pages/);
+    expect((err as OtcHttpError).hint).toMatch(/past the last page/);
+    expect((err as OtcHttpError).hint).not.toMatch(/retry/i);
+  });
+
+  it('surfaces any other 4xx with the site’s own message and no retry advice', async () => {
+    const { impl } = stubFetch(
+      new Response(
+        JSON.stringify({ code: 'rest_invalid_param', message: 'Invalid parameter(s): per_page' }),
+        { status: 400, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const err = (await client(impl).listPosts({}).catch((e: unknown) => e)) as OtcHttpError;
+    expect(err.message).toMatch(/Invalid parameter\(s\): per_page/);
+    expect(err.message).toMatch(/rest_invalid_param/);
+    expect(err.hint).not.toMatch(/retry/i);
+  });
+
+  it('keeps the 4xx hint when the error body is not JSON', async () => {
+    const { impl } = stubFetch(new Response('<html>bad</html>', { status: 400 }));
+    const err = (await client(impl).listPosts({}).catch((e: unknown) => e)) as OtcHttpError;
+    expect(err.message).toMatch(/HTTP 400/);
+    expect(err.hint).not.toMatch(/retry/i);
+  });
+
+  it('still suggests retrying for 429 and 5xx', async () => {
+    for (const status of [429, 503]) {
+      const { impl } = stubFetch(new Response('busy', { status }));
+      const err = (await client(impl).listPosts({}).catch((e: unknown) => e)) as OtcHttpError;
+      expect(err.hint).toMatch(/retry/i);
+    }
   });
 
   it('does not try to JSON-parse an HTML error page', async () => {

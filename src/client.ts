@@ -228,16 +228,41 @@ export class OtcClient {
         path: new URL(url).pathname,
       });
     }
-    if (!res.ok) {
-      throw new OtcHttpError(
-        res.status,
-        `${this.site?.name ?? this.baseUrl} returned HTTP ${res.status} for ${url}`,
-        res.status === 404
-          ? 'The path does not exist — check the id, slug or date.'
-          : 'The site may be briefly unavailable; retry shortly.',
-      );
-    }
+    if (!res.ok) throw this.httpError(res.status, url, body);
     return { res, body };
+  }
+
+  /**
+   * Builds the error for a non-2xx answer. WordPress explains a rejected
+   * request in a JSON body (`code`, `message`); that is surfaced, and only
+   * statuses that can succeed on a second try (429, 5xx) are told to retry.
+   * Paging past the end is a 400 `rest_post_invalid_page_number` — "retry"
+   * there would send a model round in a loop (fleet-audit#620).
+   */
+  private httpError(status: number, url: string, body: string): OtcHttpError {
+    let wp: { code?: unknown; message?: unknown } | undefined;
+    try {
+      const parsed: unknown = JSON.parse(body);
+      if (parsed && typeof parsed === 'object') wp = parsed as typeof wp;
+    } catch {
+      // Not a WP JSON error body (an HTML error page, say); status alone it is.
+    }
+    const code = typeof wp?.code === 'string' ? wp.code : undefined;
+    const detail = typeof wp?.message === 'string' ? wp.message : undefined;
+    const message =
+      `${this.site?.name ?? this.baseUrl} returned HTTP ${status} for ${url}` +
+      (detail ? `: ${detail}${code ? ` (${code})` : ''}` : '');
+    let hint: string;
+    if (code === 'rest_post_invalid_page_number') {
+      hint = 'page is past the last page of results — see total_pages from an earlier page and stop paging.';
+    } else if (status === 404) {
+      hint = 'The path does not exist — check the id, slug or date.';
+    } else if (status === 429 || status >= 500) {
+      hint = 'The site may be briefly unavailable; retry shortly.';
+    } else {
+      hint = 'The site rejected the request — check the arguments; repeating the same call will not help.';
+    }
+    return new OtcHttpError(status, message, hint);
   }
 
   /**
