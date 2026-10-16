@@ -437,6 +437,29 @@ function stalledFetch() {
   return { impl: impl as unknown as typeof fetch, seen };
 }
 
+describe('response size cap (fleet-audit#1315)', () => {
+  it('refuses a body whose declared length is over the cap, before reading it', async () => {
+    const res = new Response('[]', {
+      status: 200,
+      headers: { 'content-type': 'application/json', 'content-length': String(64 * 1024 * 1024) },
+    });
+    const impl = vi.fn(async () => res) as unknown as typeof fetch;
+    const err: any = await new OtcClient({ fetchImpl: impl }).getPost('1').catch((e) => e);
+    expect(err).toBeInstanceOf(McpToolError);
+    expect(err.kind).toBe('too_large');
+  });
+
+  it('cancels a streamed body that grows past the cap', async () => {
+    const big = 'x'.repeat(9 * 1024 * 1024);
+    const impl = vi.fn(
+      async () => new Response(big, { status: 200, headers: { 'content-type': 'text/html' } }),
+    ) as unknown as typeof fetch;
+    const err: any = await new OtcClient({ fetchImpl: impl }).getEventsForDate('2026-07-25').catch((e) => e);
+    expect(err).toBeInstanceOf(McpToolError);
+    expect(err.kind).toBe('too_large');
+  });
+});
+
 describe('stalled and cancelled requests', () => {
   it('gives up on a site that stops answering, with a retry hint', async () => {
     const { impl } = stalledFetch();

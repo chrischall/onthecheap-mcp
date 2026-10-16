@@ -1,4 +1,4 @@
-import { EdgeBlockedError, McpToolError, detectEdgeBlock } from '@chrischall/mcp-utils';
+import { EdgeBlockedError, McpToolError, detectEdgeBlock, errorKindOf, fetchBounded } from '@chrischall/mcp-utils';
 import {
   runCredentialHealthcheck,
   type CredentialHealthcheckResult,
@@ -42,6 +42,13 @@ export const EXPIRED_CATEGORY_SLUG = 'expired';
  * exactly that, hanging too.
  */
 export const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
+ * Largest response body read, JSON or HTML. A WP REST page or an events
+ * page is well under 1 MB; the cap stops a misbehaving site (or a MITM) from
+ * streaming an unbounded body into memory (fleet-audit#1315).
+ */
+export const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 
 /** A site answered with a non-2xx that is not a CDN/WAF block; carries the status. */
 export class OtcHttpError extends McpToolError {
@@ -202,31 +209,35 @@ export class OtcClient {
   }
 
   /**
-   * Fetches a URL and reads its body, bounded by the client's timeout and by
-   * the caller's `signal` (the MCP request's cancellation), whichever fires
-   * first. The body read shares the signal: a site can stall mid-body as
-   * easily as before the headers.
+   * Fetches a URL and reads its body through mcp-utils `fetchBounded`: one
+   * deadline (the client's timeout) covering the headers AND the body read,
+   * the caller's `signal` plus the ambient tool-call cancellation, and a
+   * {@link MAX_RESPONSE_BYTES} cap. The status is judged here, not there.
    */
   private async request(url: string, signal?: AbortSignal): Promise<{ res: Response; body: string }> {
-    const timeout = AbortSignal.timeout(this.timeoutMs);
-    const combined = signal ? AbortSignal.any([timeout, signal]) : timeout;
+    const service = this.site?.name ?? this.baseUrl;
     let res: Response;
     let body: string;
     try {
       if (signal?.aborted) throw signal.reason;
-      res = await this.fetchImpl(url, { headers: this.headers, signal: combined });
-      body = await res.text();
+      const bounded = await fetchBounded(
+        url,
+        { headers: this.headers, ...(signal ? { signal } : {}) },
+        { timeoutMs: this.timeoutMs, maxBytes: MAX_RESPONSE_BYTES, service, fetchImpl: this.fetchImpl },
+      );
+      res = bounded.res;
+      body = bounded.body;
     } catch (e) {
       if (signal?.aborted) {
-        throw new McpToolError(`Request to ${this.site?.name ?? this.baseUrl} was cancelled.`, {
+        throw new McpToolError(`Request to ${service} was cancelled.`, { cause: e });
+      }
+      const kind = errorKindOf(e);
+      if (kind === 'too_large') throw e;
+      if (kind === 'timeout') {
+        throw new OtcTimeoutError(`${service} did not respond within ${this.timeoutMs / 1000}s.`, {
+          hint: 'The site may be overloaded or briefly unavailable; retry shortly.',
           cause: e,
         });
-      }
-      if (timeout.aborted) {
-        throw new OtcTimeoutError(
-          `${this.site?.name ?? this.baseUrl} did not respond within ${this.timeoutMs / 1000}s.`,
-          { hint: 'The site may be overloaded or briefly unavailable; retry shortly.', cause: e },
-        );
       }
       throw new OtcUnreachableError(
         `Could not reach ${this.baseUrl}: ${e instanceof Error ? e.message : String(e)}`,
