@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.8](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.7...v1.1.8) (2026-10-16)
+
+
+### Bug Fixes
+
+* **client:** cap response bodies and read them through mcp-utils fetchBounded ([#126](https://github.com/chrischall/onthecheap-mcp/issues/126)) ([2d6e406](https://github.com/chrischall/onthecheap-mcp/commit/2d6e406e245ee13ad91998bfb315a5a9da6b61c9))
+* **deps:** Bump the production-dependencies group with 2 updates ([#124](https://github.com/chrischall/onthecheap-mcp/issues/124)) ([a5c0e73](https://github.com/chrischall/onthecheap-mcp/commit/a5c0e7305a484190ce7efbfb515bc863d6a17439))
+
 ## [1.1.7](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.6...v1.1.7) (2026-10-09)
 
 
