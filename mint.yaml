@@ -4,6 +4,13 @@ slug: onthecheap
 summary: >-
   Find free and cheap things to do in 14 US cities — daily event listings,
   deals and local guides from the On the Cheap network
+examples:
+  - prompt: What free or cheap events are happening in Charlotte this Saturday?
+    note: Lists that day's events from the city's On the Cheap calendar
+  - prompt: Which days in Denver have the most events listed this month?
+    note: Month-at-a-glance event counts per day
+  - prompt: Find On the Cheap articles about free museum days in Chicago.
+    note: Searches a city's deals and guides by keyword
 egress:
   allow:
     # Only hosts the SERVER process actually fetches. Hosts that appear
