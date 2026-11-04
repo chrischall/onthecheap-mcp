@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.8...v1.2.0) (2026-11-04)
+
+
+### Features
+
+* context-group hints, whats-on and lookup only (no canonical read) ([#138](https://github.com/chrischall/onthecheap-mcp/issues/138)) ([9535642](https://github.com/chrischall/onthecheap-mcp/commit/9535642fd1b077e9c38855cce052cca9a8fc44fe))
+
+
+### Bug Fixes
+
+* **deps:** Bump dotenv ([#130](https://github.com/chrischall/onthecheap-mcp/issues/130)) ([9d62c9a](https://github.com/chrischall/onthecheap-mcp/commit/9d62c9afbabaa2f438a7c945499d7c3ae12c8403))
+* **deps:** Bump the production-dependencies group across 1 directory with 3 updates ([#137](https://github.com/chrischall/onthecheap-mcp/issues/137)) ([ccb33aa](https://github.com/chrischall/onthecheap-mcp/commit/ccb33aa941a768741aeeaa59703f9c3b6aff1b2e))
+* **deps:** Bump the production-dependencies group with 2 updates ([#135](https://github.com/chrischall/onthecheap-mcp/issues/135)) ([3da7ed9](https://github.com/chrischall/onthecheap-mcp/commit/3da7ed95c59ede2cdf077b07451c23832eab4ea6))
+
+
+### Documentation
+
+* **mint:** add sample prompts for the public catalog ([#133](https://github.com/chrischall/onthecheap-mcp/issues/133)) ([17551bf](https://github.com/chrischall/onthecheap-mcp/commit/17551bf8779da9c7dffc0360bcf64e8637ab0a61))
+
 ## [1.1.8](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.7...v1.1.8) (2026-10-16)
 
 
