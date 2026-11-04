@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { SITE_ARG_DESCRIPTION, requireLocalSite, siteToday } from '../sites.js';
+import { familyMeta, EVENT_ALIASES } from './hints.js';
 
 export function registerEventTools(server: McpServer, registry: OtcRegistry): void {
   // The events tools are registered unconditionally, then refuse the national
@@ -21,6 +22,7 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
         'Set `free_only` to keep just the no-cost listings. ' +
         'The national hub has no local calendar and is not a valid `site` here. ' +
         'Use otc_get_post on a listing\'s url for the full write-up. Read-only.',
+      _meta: familyMeta('whats-on', { aliases: EVENT_ALIASES }),
       annotations: toolAnnotations({
         title: 'List a city’s events for a day',
         readOnly: true,
@@ -68,6 +70,7 @@ export function registerEventTools(server: McpServer, registry: OtcRegistry): vo
         'call otc_list_events for a specific date to get that day\'s complete schedule. ' +
         'The national hub has no local calendar and is not a valid `site` here. ' +
         'Use this to find the busiest days or scan a month at a glance. Read-only.',
+      _meta: familyMeta('whats-on', { aliases: EVENT_ALIASES }),
       annotations: toolAnnotations({
         title: 'Overview of a city’s events across a month',
         readOnly: true,

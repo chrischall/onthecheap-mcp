@@ -32,6 +32,24 @@ The `national` site (Living On The Cheap) covers US-wide deals and has **no
 local events calendar**. The event tools reject it with an explanatory error;
 use `otc_search_posts` with `site: "national"` for national deals.
 
+## In context groups
+
+On an mcp-host gateway with context groups, this server is in the **family**
+group. Every tool except `otc_healthcheck` carries a `_meta.mint` hint:
+`otc_list_events` and `otc_events_month_overview` are `whats-on`; the article,
+taxonomy and site reads are `lookup`. There are no writes.
+
+**Nothing here is a canonical read, on purpose.** The group's "what's on?"
+intent tool calls a canonical read by itself, and every events read needs a
+`site` the person has not named — there is no default city, and the thirteen
+sites are the network's cities rather than the person's own subjects, so they
+are not published as a subject enum (that would ask the whole country). A
+compound ask like "what's on for the kids this weekend, and anything cheap in
+Charlotte?" therefore reaches this server through the model, which names the
+city and calls `otc_list_events` per date, not through the intent tool's
+fan-out. The server is a public API with no browser bridge, so the group never
+answers "needs your browser open" for it.
+
 ## Picking the right tool
 
 - **What's on for a date** → `otc_list_events` with an ISO `date`

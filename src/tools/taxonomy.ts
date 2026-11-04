@@ -4,6 +4,7 @@ import { minifiedResult, toolAnnotations } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { decodeEntities } from '../normalize.js';
 import { SITES, SITE_ARG_DESCRIPTION, requireSite } from '../sites.js';
+import { familyMeta } from './hints.js';
 
 export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry): void {
   const site = z.string().min(1).describe(SITE_ARG_DESCRIPTION);
@@ -16,6 +17,7 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
         'List one "on the Cheap" site\'s article categories with their ids and post counts (kids, music, food, festivals, art, museums, and so on). ' +
         'Pass the `site` key for the city (see otc_list_sites). ' +
         'Use an id to filter otc_search_posts by topic — ids are per-site, so use them only against the site they came from. Read-only.',
+      _meta: familyMeta('lookup'),
       annotations: toolAnnotations({
         title: 'List a city’s article categories',
         readOnly: true,
@@ -48,6 +50,7 @@ export function registerTaxonomyTools(server: McpServer, registry: OtcRegistry):
         'List one "on the Cheap" site\'s location taxonomy with ids and post counts — the neighbourhoods and surrounding areas it covers. ' +
         'Pass the `site` key for the city (see otc_list_sites). ' +
         'Use an id to filter otc_search_posts geographically — ids are per-site, so use them only against the site they came from. Read-only.',
+      _meta: familyMeta('lookup'),
       annotations: toolAnnotations({
         title: 'List a city’s locations',
         readOnly: true,
@@ -82,6 +85,7 @@ export function registerUtilityTools(server: McpServer, registry: OtcRegistry): 
         'List every city in the "on the Cheap" network with the `site` key used to select it. ' +
         'This server reads them all — every other tool takes a `site` argument, and there is no default, ' +
         'so start here when you do not already know which key covers the city the user means. Read-only.',
+      _meta: familyMeta('lookup'),
       annotations: toolAnnotations({
         title: 'List the On the Cheap sites',
         readOnly: true,
