@@ -19,6 +19,7 @@ import { toolAnnotations, PositiveInt } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { SITE_ARG_DESCRIPTION, requireSite } from '../sites.js';
 import { compactPost, htmlToText, decodeEntities } from '../normalize.js';
+import { familyMeta, DEAL_ALIASES } from './hints.js';
 
 const IsoDate = z
   .string()
@@ -41,6 +42,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         'Category and location ids are per-site — resolve them against the SAME site you are searching. ' +
         'Retired deals live in an "expired" category and are excluded by default; set `include_expired` to search them too. ' +
         'Returns slim summaries by default — use otc_get_post for an article\'s full text. Read-only.',
+      _meta: familyMeta('lookup', { aliases: DEAL_ALIASES }),
       annotations: toolAnnotations({
         title: 'Search a city’s On the Cheap articles',
         readOnly: true,
@@ -118,6 +120,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         'Pass the `site` key for the city the article belongs to — an id or slug from one site will not resolve on another, ' +
         'and a full URL must match the site you name. ' +
         'Returns the article text as readable plain text by default; set `format` to "html" for the original markup. Read-only.',
+      _meta: familyMeta('lookup'),
       annotations: toolAnnotations({
         title: 'Get an On the Cheap article',
         readOnly: true,
