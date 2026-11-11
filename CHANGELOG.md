@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/chrischall/onthecheap-mcp/compare/v1.2.0...v1.3.0) (2026-11-11)
+
+
+### Features
+
+* **posts:** read an article as Markdown with format "markdown" ([#142](https://github.com/chrischall/onthecheap-mcp/issues/142)) ([9d5ca28](https://github.com/chrischall/onthecheap-mcp/commit/9d5ca28f7ca204baed1fab7483a36337f1c2eb5f))
+
+
+### Bug Fixes
+
+* **deps:** Bump the production-dependencies group with 2 updates ([#140](https://github.com/chrischall/onthecheap-mcp/issues/140)) ([f33ddf4](https://github.com/chrischall/onthecheap-mcp/commit/f33ddf4b8025c13a74ce2e5c6f76bd9a194ee784))
+
 ## [1.2.0](https://github.com/chrischall/onthecheap-mcp/compare/v1.1.8...v1.2.0) (2026-11-04)
 
 
