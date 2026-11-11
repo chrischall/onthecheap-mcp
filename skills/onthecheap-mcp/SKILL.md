@@ -59,6 +59,8 @@ answers "needs your browser open" for it.
 - **Find articles by topic, place or text** → `otc_search_posts`
   (`query`, `category`, `location`, `after`/`before`, `view?`).
 - **Read one article in full** → `otc_get_post` with an id, slug, or URL.
+  Add `format: "markdown"` when you need the article's links (tickets, venue
+  sites, sign-up pages) or its lists and headings; plain text drops them.
 - **Discover filter ids** → `otc_list_categories`, `otc_list_locations`.
 - **Find which cities exist** → `otc_list_sites` (the only tool with no `site`).
 
@@ -112,7 +114,8 @@ oversight:
 
 - **`otc_get_post`** — its product *is* the article body. A projection would
   delete the thing you called it for. Its size knob is `format` instead:
-  readable plain text by default, `"html"` for the original markup.
+  readable plain text by default, `"markdown"` to keep links, headings and
+  lists (somewhat larger), `"html"` for the original markup.
 - **`otc_list_events`, `otc_events_month_overview`** — the events calendar is
   not JSON. It is scraped out of server-rendered HTML into a six-field listing
   (`title`, `url`, `time`, `price`, `venue`, `is_free`), so there is no fat

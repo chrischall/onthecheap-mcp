@@ -1,5 +1,6 @@
 import { parse } from 'node-html-parser';
 import { htmlToReadableText } from '@chrischall/mcp-utils/html';
+import { htmlToMarkdown as richMarkdown } from '@chrischall/mcp-utils/rich';
 import type { WpPost } from './client.js';
 
 /**
@@ -26,6 +27,18 @@ export function decodeEntities(value: string | undefined | null): string {
  */
 export function htmlToText(html: string | undefined | null, limit?: number): string {
   return htmlToReadableText(html, limit === undefined ? {} : { limit });
+}
+
+/**
+ * A post body as Markdown: links keep their targets, headings, lists, tables
+ * and emphasis their structure, at a fraction of the HTML's size. Hidden
+ * content (form honeypots), scripts, styles and embedded-form controls
+ * (`<select>` option lists) are dropped, and figure captions read as their
+ * own lines — all by /rich itself; WordPress markup needs nothing extra.
+ */
+export function htmlToMarkdown(html: string | undefined | null): string {
+  if (!html) return '';
+  return richMarkdown(html);
 }
 
 export interface CompactPost {
