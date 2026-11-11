@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decodeEntities, htmlToText, compactPost } from '../src/normalize.js';
+import { decodeEntities, htmlToText, htmlToMarkdown, compactPost } from '../src/normalize.js';
 
 describe('decodeEntities', () => {
   it('decodes the numeric entities WordPress emits in rendered titles', () => {
@@ -85,6 +85,53 @@ describe('htmlToText', () => {
     const depth = 20_000;
     const html = '<span>'.repeat(depth) + 'deep' + '</span>'.repeat(depth);
     expect(htmlToText(html)).toBe('deep');
+  });
+});
+
+describe('htmlToMarkdown', () => {
+  it('keeps links, headings, lists and emphasis', () => {
+    expect(
+      htmlToMarkdown(
+        '<p>Visit <a href="https://www.oldarmorbeer.net/">Old Armor</a> for <strong>free</strong> music.</p>' +
+          '<h2>Upcoming Events</h2><ul><li>Friday: <b>Octopus Band</b></li><li>Saturday</li></ul>',
+      ),
+    ).toBe(
+      'Visit [Old Armor](https://www.oldarmorbeer.net/) for **free** music.\n\n' +
+        '## Upcoming Events\n\n- Friday: **Octopus Band**\n- Saturday',
+    );
+  });
+
+  it('decodes the named entities authors type, as htmlToText does', () => {
+    expect(htmlToMarkdown('<p>9&ndash;5 &hellip; caf&eacute;&nbsp;open &amp; &lt;free&gt;</p>')).toBe(
+      '9–5 … café open & <free>',
+    );
+  });
+
+  it('leaves an unknown entity name as written', () => {
+    expect(htmlToMarkdown('<p>&notanentity; &copy;</p>')).toBe('&notanentity; ©');
+  });
+
+  it('drops the option lists of embedded signup forms', () => {
+    expect(
+      htmlToMarkdown('<p>Address</p><select><option>Afghanistan</option><option>Albania</option></select><p>Thanks</p>'),
+    ).toBe('Address\n\nThanks');
+  });
+
+  it('reads a figure caption apart from its image', () => {
+    expect(
+      htmlToMarkdown('<figure><img alt="Brewery exterior" src="x.jpg"><figcaption>Photo: Mace</figcaption></figure><p>Text</p>'),
+    ).toBe('[Brewery exterior]\n\nPhoto: Mace\n\nText');
+  });
+
+  it('drops script content and hidden form fields', () => {
+    expect(
+      htmlToMarkdown('<p>Doors open</p><script>var x=1</script><div style="display:none">honeypot</div><p>at 10</p>'),
+    ).toBe('Doors open\n\nat 10');
+  });
+
+  it('reads an empty body as empty', () => {
+    expect(htmlToMarkdown(undefined)).toBe('');
+    expect(htmlToMarkdown('')).toBe('');
   });
 });
 

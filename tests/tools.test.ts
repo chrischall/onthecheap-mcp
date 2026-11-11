@@ -213,6 +213,19 @@ describe('otc_get_post', () => {
     );
     expect(out.content).toContain('<b>10am</b>');
   });
+
+  it('returns the body as Markdown when asked, links and emphasis kept', async () => {
+    const h = await setup();
+    getPost.mockResolvedValue({
+      ...POST,
+      content: { rendered: '<p>Doors open at <b>10am</b>. <a href="https://mint.org/">Tickets</a></p>' },
+    });
+    const out = parse(
+      await h.callTool('otc_get_post', { site: 'charlotte', post: '1', format: 'markdown' }),
+    );
+    expect(out.content).toBe('Doors open at **10am**. [Tickets](https://mint.org/)');
+    expect(out.excerpt).toBe('Free entry & tours.');
+  });
 });
 
 describe('otc_list_events', () => {

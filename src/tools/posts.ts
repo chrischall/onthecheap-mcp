@@ -18,7 +18,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { toolAnnotations, PositiveInt } from '@chrischall/mcp-utils';
 import type { OtcRegistry } from '../registry.js';
 import { SITE_ARG_DESCRIPTION, requireSite } from '../sites.js';
-import { compactPost, htmlToText, decodeEntities } from '../normalize.js';
+import { compactPost, htmlToMarkdown, htmlToText, decodeEntities } from '../normalize.js';
 import { familyMeta, DEAL_ALIASES } from './hints.js';
 
 const IsoDate = z
@@ -119,7 +119,8 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         'Fetch one "on the Cheap" article in full by numeric id, slug, or full URL. ' +
         'Pass the `site` key for the city the article belongs to — an id or slug from one site will not resolve on another, ' +
         'and a full URL must match the site you name. ' +
-        'Returns the article text as readable plain text by default; set `format` to "html" for the original markup. Read-only.',
+        'Returns the article text as readable plain text by default; set `format` to "markdown" to keep its links, headings and lists, ' +
+        'or "html" for the original markup. Read-only.',
       _meta: familyMeta('lookup'),
       annotations: toolAnnotations({
         title: 'Get an On the Cheap article',
@@ -131,9 +132,11 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         site,
         post: z.string().min(1).describe('Post id, slug, or full article URL'),
         format: z
-          .enum(['text', 'html'])
+          .enum(['text', 'markdown', 'html'])
           .optional()
-          .describe('Body format: readable text (default) or raw HTML'),
+          .describe(
+            'Body format: "text" (default, readable plain text), "markdown" (keeps links with their targets, headings, lists and emphasis) or "html" (the raw markup)',
+          ),
       }),
     },
     async ({ site: siteKey, post, format }, ctx) => {
@@ -154,7 +157,7 @@ export function registerPostTools(server: McpServer, registry: OtcRegistry): voi
         locations: record.locations,
         tags: record.tags,
         image: record.jetpack_featured_media_url || undefined,
-        content: format === 'html' ? body : htmlToText(body),
+        content: format === 'html' ? body : format === 'markdown' ? htmlToMarkdown(body) : htmlToText(body),
       });
     },
   );

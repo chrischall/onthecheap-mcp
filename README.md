@@ -64,7 +64,7 @@ events calendar — it is still searchable via the other tools.
 | `otc_list_events` | Everything on a given day — time, price, venue. `free_only` filters to no-cost listings. Defaults to today. |
 | `otc_events_month_overview` | Day-by-day counts for a month, to find the busiest days. Each day's list is a preview; `total` is the real count. |
 | `otc_search_posts` | Search articles by text, category, location and date range. Returns slim summaries by default. |
-| `otc_get_post` | One article in full, as readable text or raw HTML. Accepts an id, slug, or URL. |
+| `otc_get_post` | One article in full, as readable text, Markdown (`format: "markdown"`: links, headings and lists kept) or raw HTML. Accepts an id, slug, or URL. |
 | `otc_list_categories` | Category ids and post counts, for filtering searches by topic. |
 | `otc_list_locations` | Local area ids and post counts, for filtering geographically. |
 | `otc_list_sites` | The cities in the network and their `site` keys. Takes no arguments. |
