@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/chrischall/onthecheap-mcp/compare/v1.3.0...v1.3.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **deps:** Bump the production-dependencies group with 2 updates ([#143](https://github.com/chrischall/onthecheap-mcp/issues/143)) ([57abe4c](https://github.com/chrischall/onthecheap-mcp/commit/57abe4c3e18a8c8b24849f376c49982322559027))
+
 ## [1.3.0](https://github.com/chrischall/onthecheap-mcp/compare/v1.2.0...v1.3.0) (2026-11-11)
 
 
